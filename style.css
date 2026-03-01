@@ -1,0 +1,151 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f8fafc;
+    color: #333;
+}
+
+/* 1. THE VIVID MOVING BACKGROUND */
+.vivid-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
+    background-size: 200% 200%;
+    animation: moveBg 10s ease infinite alternate;
+}
+
+@keyframes moveBg {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
+
+/* 2. FOGGY IMAGE OVERLAY */
+.image-header {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+.hero-img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.foggy-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* This creates the foggy, vivid tint on the photo itself */
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(143, 211, 244, 0.4));
+    backdrop-filter: blur(1px); 
+    pointer-events: none;
+}
+
+/* 3. SCROLLABLE CONTENT */
+.scroll-container {
+    width: 100%;
+    height: 100%;
+}
+
+.main-content {
+    max-width: 480px;
+    margin: -40px auto 0;
+    position: relative;
+    z-index: 10;
+    padding: 0 20px;
+}
+.glass-card {
+    /* 1. The Transparency (80% transparent) */
+    background: rgba(255, 255, 255, 0.2); 
+    
+    /* 2. The Foggy Texture (Blur) */
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    
+    /* 3. The Layout (Keeping what was good) */
+    margin: -40px 15px 30px 15px;
+    padding: 35px 25px;
+    border-radius: 35px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    position: relative;
+    z-index: 10;
+}
+
+/* Make sure the buttons inside also look aesthetic against the transparency */
+.btn {
+    background: rgba(255, 255, 255, 0.4); /* Semi-transparent buttons */
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    margin-bottom: 12px;
+    /* ... keep your other button styles like padding and font ... */
+}
+
+
+/* 4. AESTHETIC BUTTONS */
+.menu-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn {
+    text-decoration: none;
+    color: #2d3436;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 20px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    border: 1px solid #fff;
+    transition: 0.4s all cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: block;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.btn:hover {
+    background: #00ffcc;
+    transform: scale(1.03) translateY(-5px);
+    box-shadow: 0 12px 25px rgba(0, 255, 204, 0.3);
+}
+
+/* 5. EXTRA SCROLLING CONTENT */
+.extra-space {
+    padding: 40px 0 80px;
+    text-align: center;
+}
+
+.quote-card {
+    font-style: italic;
+    color: #636e72;
+    margin-bottom: 40px;
+    font-size: 1.1rem;
+}
+
+.footer {
+    font-size: 0.9rem;
+    color: #b2bec3;
+}
+
+/* 6. ENTRANCE ANIMATION */
+.reveal {
+    animation: slideUp 0.5s ease-out forwards;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(50px); }
+    to { opacity: 1; transform: translateY(0); }
+}
