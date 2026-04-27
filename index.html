@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Mira – Blink Mirror</title>
-<!-- face-api.js from CDN -->
 <script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -18,7 +17,6 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Bokeh background animation */
   .bokeh {
     position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none;
     z-index:0;
@@ -35,14 +33,12 @@
     50% { transform: translateY(-40px) scale(1.5); opacity:0; }
   }
 
-  /* Main container */
   .container {
     position:relative; z-index:1;
     display:flex; flex-direction:column; align-items:center;
     gap:20px;
   }
 
-  /* Character canvas */
   .character {
     width:260px; height:320px;
     position:relative;
@@ -59,7 +55,6 @@
     75% { transform: rotate(-1.5deg); }
   }
 
-  /* Hair back layer */
   .hair-back {
     position:absolute; bottom:40px; left:50%; transform:translateX(-50%);
     width:180px; height:180px;
@@ -68,7 +63,6 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     z-index:1;
   }
-  /* Twintails */
   .twintail {
     position:absolute;
     width:40px; height:120px;
@@ -92,7 +86,6 @@
     75% { transform: rotate(-5deg); }
   }
 
-  /* Face */
   .face {
     position:absolute;
     bottom:60px; left:50%; transform:translateX(-50%);
@@ -103,7 +96,6 @@
     z-index:2;
   }
 
-  /* Eyes container */
   .eyes {
     position:absolute;
     top:45px; left:50%; transform:translateX(-50%);
@@ -118,7 +110,6 @@
     overflow:hidden;
     transition: transform 0.08s ease;
   }
-  /* Iris */
   .eye::before {
     content:'';
     position:absolute;
@@ -128,7 +119,6 @@
     top:50%; left:50%;
     transform:translate(-50%,-50%);
   }
-  /* Highlight */
   .eye::after {
     content:'';
     position:absolute;
@@ -139,12 +129,10 @@
     box-shadow: 0 0 4px white;
   }
 
-  /* Closed eye state (class will be toggled) */
   .eye.closed {
     transform: scaleY(0.05);
   }
 
-  /* Cheeks */
   .cheek {
     position:absolute; top:70px;
     width:20px; height:12px;
@@ -157,7 +145,6 @@
   .cheek.right { right:15px; }
   .cheek.blush { transform: scale(1.8); background: rgba(255,100,100,0.7); }
 
-  /* Mouth */
   .mouth {
     position:absolute;
     bottom:25px; left:50%; transform:translateX(-50%);
@@ -171,7 +158,6 @@
     border-radius:0 0 80% 80%;
   }
 
-  /* Puzzled overlay */
   .question-mark {
     display:none;
     position:absolute; top:-20px; right:10px;
@@ -186,7 +172,6 @@
     100% { transform: scale(1); }
   }
 
-  /* Camera preview */
   .camera-preview {
     position:fixed; bottom:20px; right:20px;
     width:80px; height:100px;
@@ -202,7 +187,6 @@
     transform: scaleX(-1);
   }
 
-  /* UI elements */
   .ui-bar {
     position:fixed; top:10px; left:10px; right:10px;
     display:flex; justify-content:space-between;
@@ -213,7 +197,6 @@
   .name { font-size:24px; font-weight:bold; }
   .settings-icon { font-size:28px; cursor:pointer; }
 
-  /* Tutorial overlay */
   .tutorial {
     position:fixed; top:0; left:0; width:100%; height:100%;
     background: rgba(0,0,0,0.8); z-index:20;
@@ -231,16 +214,13 @@
 </head>
 <body>
 
-<!-- Bokeh background -->
 <div class="bokeh" id="bokeh"></div>
 
-<!-- UI Bar -->
 <div class="ui-bar">
   <div class="name">Mira ✨</div>
   <div class="settings-icon">⚙️</div>
 </div>
 
-<!-- Tutorial overlay (shown on first visit) -->
 <div class="tutorial" id="tutorial">
   <h2>Let Mira see you blink!</h2>
   <p>Allow camera access so she can mimic your blinks.</p>
@@ -248,7 +228,6 @@
   <p style="font-size:12px; opacity:0.7;">(Your video stays on your device.)</p>
 </div>
 
-<!-- Character -->
 <div class="container">
   <div class="character" id="character">
     <div class="hair-back"></div>
@@ -267,13 +246,11 @@
   </div>
 </div>
 
-<!-- Camera preview -->
 <div class="camera-preview" id="cameraPreview" style="display:none;">
   <video id="video" playsinline autoplay muted></video>
 </div>
 
 <script>
-// ========== GLOBAL VARIABLES ==========
 const video = document.getElementById('video');
 const leftEyeEl = document.getElementById('leftEye');
 const rightEyeEl = document.getElementById('rightEye');
@@ -285,6 +262,9 @@ const startBtn = document.getElementById('startBtn');
 const tutorial = document.getElementById('tutorial');
 const cameraPreview = document.getElementById('cameraPreview');
 
+// CDN paths for face-api models
+const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
+
 let faceDetectionInterval;
 let lastBlinkTime = 0;
 let isUserBlinking = false;
@@ -292,12 +272,9 @@ let autoBlinkTimeout;
 let faceLostTimer;
 let faceLost = false;
 
-// EAR threshold for closed eyes
 const EAR_THRESHOLD = 0.25;
-// Smile threshold (mouth aspect ratio)
 const MAR_THRESHOLD = 0.6;
 
-// ========== BOKEH CREATION ==========
 function createBokeh() {
   const bokehContainer = document.getElementById('bokeh');
   for (let i=0; i<15; i++) {
@@ -313,7 +290,6 @@ function createBokeh() {
 }
 createBokeh();
 
-// ========== ANIMATION HELPERS ==========
 function blinkEyes(closeDuration = 150) {
   const eyes = [leftEyeEl, rightEyeEl];
   eyes.forEach(eye => eye.classList.add('closed'));
@@ -322,7 +298,6 @@ function blinkEyes(closeDuration = 150) {
   }, closeDuration);
 }
 
-// Autonomous blink every 3-4 seconds if user not blinking
 function scheduleAutoBlink() {
   clearTimeout(autoBlinkTimeout);
   const delay = 3000 + Math.random() * 1500;
@@ -330,11 +305,10 @@ function scheduleAutoBlink() {
     if (!isUserBlinking) {
       blinkEyes(150);
     }
-    scheduleAutoBlink(); // loop
+    scheduleAutoBlink();
   }, delay);
 }
 
-// Smile detection -> cheeks blush + bigger smile mouth
 function setSmileState(smiling) {
   if (smiling) {
     leftCheek.classList.add('blush');
@@ -347,7 +321,6 @@ function setSmileState(smiling) {
   }
 }
 
-// Show/hide question mark when face lost
 function setFaceLost(lost) {
   if (lost && !faceLost) {
     questionMark.style.display = 'block';
@@ -358,7 +331,6 @@ function setFaceLost(lost) {
   }
 }
 
-// ========== EYE ASPECT RATIO (EAR) ==========
 function eyeAspectRatio(eye) {
   const A = distance(eye[1], eye[5]);
   const B = distance(eye[2], eye[4]);
@@ -369,20 +341,16 @@ function distance(pt1, pt2) {
   return Math.sqrt(Math.pow(pt1.x - pt2.x, 2) + Math.pow(pt1.y - pt2.y, 2));
 }
 
-// ========== MOUTH ASPECT RATIO (MAR) for smile ==========
 function mouthAspectRatio(mouth) {
-  // mouth landmarks: 48-67 (20 points). Use outer contour points: 48-54 top, 54-60 bottom?
-  // Simpler: use width of mouth (distance between corners 48 and 54) and height (distance 51 and 57)
-  const leftCorner = mouth[0];   // 48
-  const rightCorner = mouth[6]; // 54
-  const topLip = mouth[3];      // 51
-  const bottomLip = mouth[9];   // 57
+  const leftCorner = mouth[0];
+  const rightCorner = mouth[6];
+  const topLip = mouth[3];
+  const bottomLip = mouth[9];
   const width = distance(leftCorner, rightCorner);
   const height = distance(topLip, bottomLip);
   return height / width;
 }
 
-// ========== FACE DETECTION LOOP ==========
 async function onFaceDetected() {
   if (!video.paused && !video.ended) {
     const detections = await faceapi.detectSingleFace(video,
@@ -390,7 +358,6 @@ async function onFaceDetected() {
       .withFaceLandmarks();
 
     if (detections && detections.landmarks) {
-      // Face found: clear lost timer
       if (faceLost) {
         setFaceLost(false);
         clearTimeout(faceLostTimer);
@@ -401,31 +368,26 @@ async function onFaceDetected() {
       const rightEye = landmarks.getRightEye();
       const mouthPoints = landmarks.getMouth();
 
-      // Blink detection
       const earLeft = eyeAspectRatio(leftEye);
       const earRight = eyeAspectRatio(rightEye);
       const avgEAR = (earLeft + earRight) / 2;
 
       const now = Date.now();
       if (avgEAR < EAR_THRESHOLD && !isUserBlinking && (now - lastBlinkTime) > 300) {
-        // User blinked
         isUserBlinking = true;
         lastBlinkTime = now;
         blinkEyes(150);
-        setTimeout(() => { isUserBlinking = false; }, 300); // cooldown
+        setTimeout(() => { isUserBlinking = false; }, 300);
       }
 
-      // Smile detection
       const mar = mouthAspectRatio(mouthPoints);
       setSmileState(mar > MAR_THRESHOLD);
 
-      // Reset face lost timer
       clearTimeout(faceLostTimer);
       faceLostTimer = setTimeout(() => {
         setFaceLost(true);
       }, 2000);
     } else {
-      // No face detected -> start timer
       clearTimeout(faceLostTimer);
       faceLostTimer = setTimeout(() => {
         setFaceLost(true);
@@ -434,7 +396,6 @@ async function onFaceDetected() {
   }
 }
 
-// ========== START CAMERA & DETECTION ==========
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -443,20 +404,15 @@ async function startCamera() {
     video.srcObject = stream;
     video.play();
 
-    // Show camera preview
     cameraPreview.style.display = 'block';
 
-    // Load face-api models (they must be in /models folder)
-    await faceapi.nets.tinyFaceDetector.load('/models/');
-    await faceapi.nets.faceLandmark68Net.load('/models/');
+    // Load models from CDN (no local files needed)
+    await faceapi.nets.tinyFaceDetector.load(MODEL_URL);
+    await faceapi.nets.faceLandmark68Net.load(MODEL_URL);
 
-    // Start detection loop (every 120ms ~8fps)
     faceDetectionInterval = setInterval(onFaceDetected, 120);
-
-    // Start autonomous blinking
     scheduleAutoBlink();
 
-    // Hide tutorial
     tutorial.style.display = 'none';
     localStorage.setItem('miraTutorialShown', 'true');
   } catch (err) {
@@ -465,9 +421,7 @@ async function startCamera() {
   }
 }
 
-// ========== INITIALIZATION ==========
 window.addEventListener('load', () => {
-  // Check if tutorial already shown
   if (localStorage.getItem('miraTutorialShown') === 'true') {
     tutorial.style.display = 'none';
     startCamera();
@@ -478,7 +432,6 @@ window.addEventListener('load', () => {
 
 startBtn.addEventListener('click', startCamera);
 
-// Cleanup on page unload (optional)
 window.addEventListener('beforeunload', () => {
   clearInterval(faceDetectionInterval);
   clearTimeout(faceLostTimer);
@@ -489,4 +442,4 @@ window.addEventListener('beforeunload', () => {
 });
 </script>
 </body>
-    </html>
+ </html>
