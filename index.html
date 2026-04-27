@@ -1,718 +1,492 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>✨ For You ✨</title>
-    <style>
-        :root {
-            --bg: #0a0010;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Mira – Blink Mirror</title>
+<!-- face-api.js from CDN -->
+<script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: radial-gradient(circle at 20% 30%, #ffe6f0, #e0c3fc);
+    min-height:100vh;
+    display:flex; justify-content:center; align-items:center;
+    font-family: 'Segoe UI', sans-serif;
+    overflow:hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  /* Bokeh background animation */
+  .bokeh {
+    position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none;
+    z-index:0;
+  }
+  .bokeh span {
+    position:absolute;
+    display:block;
+    background: rgba(255,255,255,0.15);
+    border-radius:50%;
+    animation: float 8s infinite ease-in-out;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0) scale(1); opacity:0.3; }
+    50% { transform: translateY(-40px) scale(1.5); opacity:0; }
+  }
 
-        body {
-            background: var(--bg);
-            overflow: hidden;
-            font-family: 'Georgia', 'Times New Roman', 'Palatino Linotype', 'Book Antiqua', serif;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-            touch-action: manipulation;
-            height: 100dvh;
-            width: 100vw;
-            position: fixed;
-            top: 0;
-            left: 0;
-        }
+  /* Main container */
+  .container {
+    position:relative; z-index:1;
+    display:flex; flex-direction:column; align-items:center;
+    gap:20px;
+  }
 
-        canvas {
-            display: block;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
+  /* Character canvas */
+  .character {
+    width:260px; height:320px;
+    position:relative;
+    transform-origin: center bottom;
+    animation: breathe 3s ease-in-out infinite, headTilt 8s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+  @keyframes headTilt {
+    0%,100% { transform: rotate(0deg); }
+    25% { transform: rotate(1.5deg); }
+    75% { transform: rotate(-1.5deg); }
+  }
 
-        .overlay {
-            position: fixed;
-            bottom: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            text-align: center;
-            pointer-events: none;
-            padding: 1rem 2rem;
-        }
+  /* Hair back layer */
+  .hair-back {
+    position:absolute; bottom:40px; left:50%; transform:translateX(-50%);
+    width:180px; height:180px;
+    background: #f8a5c2;
+    border-radius: 50% 50% 40% 40%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    z-index:1;
+  }
+  /* Twintails */
+  .twintail {
+    position:absolute;
+    width:40px; height:120px;
+    background: #f8a5c2;
+    border-radius: 50%;
+    z-index:0;
+    transform-origin: top center;
+    animation: hairSway 4s ease-in-out infinite;
+  }
+  .twintail.left {
+    left:20px; top:100px;
+    animation-delay: 0s;
+  }
+  .twintail.right {
+    right:20px; top:100px;
+    animation-delay: -2s;
+  }
+  @keyframes hairSway {
+    0%,100% { transform: rotate(0deg); }
+    25% { transform: rotate(5deg); }
+    75% { transform: rotate(-5deg); }
+  }
 
-        .message {
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            font-weight: bold;
-            color: #ffe0ec;
-            text-shadow:
-                0 0 20px rgba(255, 150, 180, 0.9),
-                0 0 40px rgba(255, 120, 160, 0.6),
-                0 0 80px rgba(255, 100, 140, 0.4),
-                0 0 120px rgba(255, 80, 130, 0.3),
-                0 2px 4px rgba(0, 0, 0, 0.5);
-            letter-spacing: 0.04em;
-            animation: messageGlow 3s ease-in-out infinite, fadeInUp 1.8s ease-out forwards;
-            opacity: 0;
-            animation-delay: 0s, 0.3s;
-        }
+  /* Face */
+  .face {
+    position:absolute;
+    bottom:60px; left:50%; transform:translateX(-50%);
+    width:150px; height:130px;
+    background: #fff4e6;
+    border-radius: 50% 50% 45% 45%;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    z-index:2;
+  }
 
-        .submessage {
-            font-size: clamp(0.9rem, 2vw, 1.3rem);
-            color: #ffccda;
-            text-shadow:
-                0 0 10px rgba(255, 160, 190, 0.7),
-                0 0 25px rgba(255, 130, 160, 0.4),
-                0 1px 3px rgba(0, 0, 0, 0.5);
-            letter-spacing: 0.06em;
-            margin-top: 0.4rem;
-            animation: fadeInUp 2s ease-out forwards;
-            opacity: 0;
-            animation-delay: 0.8s;
-        }
+  /* Eyes container */
+  .eyes {
+    position:absolute;
+    top:45px; left:50%; transform:translateX(-50%);
+    display:flex; gap:28px;
+  }
+  .eye {
+    width:36px; height:36px;
+    background: #fff;
+    border-radius:50%;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+    position:relative;
+    overflow:hidden;
+    transition: transform 0.08s ease;
+  }
+  /* Iris */
+  .eye::before {
+    content:'';
+    position:absolute;
+    width:22px; height:22px;
+    background: radial-gradient(circle at 30% 30%, #9b59b6, #4a235a);
+    border-radius:50%;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+  }
+  /* Highlight */
+  .eye::after {
+    content:'';
+    position:absolute;
+    width:6px; height:6px;
+    background:white;
+    border-radius:50%;
+    top:6px; left:8px;
+    box-shadow: 0 0 4px white;
+  }
 
-        .hint {
-            position: fixed;
-            bottom: 3%;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            font-size: 0.75rem;
-            color: rgba(255, 200, 220, 0.7);
-            letter-spacing: 0.08em;
-            pointer-events: none;
-            animation: hintPulse 4s ease-in-out infinite, fadeInUp 2.5s ease-out forwards;
-            opacity: 0;
-            animation-delay: 0s, 1.5s;
-        }
+  /* Closed eye state (class will be toggled) */
+  .eye.closed {
+    transform: scaleY(0.05);
+  }
 
-        @keyframes messageGlow {
-            0%,
-            100% {
-                text-shadow: 0 0 20px rgba(255, 150, 180, 0.9), 0 0 40px rgba(255, 120, 160, 0.6), 0 0 80px rgba(255, 100, 140, 0.4), 0 0 120px rgba(255, 80, 130, 0.3), 0 2px 4px rgba(0, 0, 0, 0.5);
-            }
-            50% {
-                text-shadow: 0 0 30px rgba(255, 170, 200, 1), 0 0 55px rgba(255, 140, 175, 0.8), 0 0 100px rgba(255, 110, 155, 0.6), 0 0 150px rgba(255, 90, 145, 0.45), 0 2px 4px rgba(0, 0, 0, 0.5);
-            }
-        }
+  /* Cheeks */
+  .cheek {
+    position:absolute; top:70px;
+    width:20px; height:12px;
+    background: rgba(255,140,140,0.5);
+    border-radius:50%;
+    filter: blur(3px);
+    transition: transform 0.3s;
+  }
+  .cheek.left { left:15px; }
+  .cheek.right { right:15px; }
+  .cheek.blush { transform: scale(1.8); background: rgba(255,100,100,0.7); }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(25px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+  /* Mouth */
+  .mouth {
+    position:absolute;
+    bottom:25px; left:50%; transform:translateX(-50%);
+    width:16px; height:8px;
+    border-bottom: 3px solid #d4869c;
+    border-radius:0 0 50% 50%;
+  }
+  .mouth.smile {
+    width:24px; height:12px;
+    border-bottom-width: 3px;
+    border-radius:0 0 80% 80%;
+  }
 
-        @keyframes hintPulse {
-            0%,
-            100% {
-                opacity: 0.5;
-            }
-            50% {
-                opacity: 0.9;
-            }
-        }
+  /* Puzzled overlay */
+  .question-mark {
+    display:none;
+    position:absolute; top:-20px; right:10px;
+    font-size:40px;
+    color:#ff6347;
+    z-index:5;
+    animation: pop 0.6s ease-in-out;
+  }
+  @keyframes pop {
+    0% { transform: scale(0); }
+    80% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
 
-        /* Mobile optimizations */
-        @media (max-width: 600px) {
-            .overlay {
-                bottom: 12%;
-                padding: 0.8rem 1.2rem;
-            }
-            .message {
-                font-size: clamp(1.6rem, 7vw, 2.4rem);
-            }
-            .submessage {
-                font-size: clamp(0.75rem, 3vw, 1rem);
-            }
-            .hint {
-                bottom: 4%;
-                font-size: 0.7rem;
-            }
-        }
+  /* Camera preview */
+  .camera-preview {
+    position:fixed; bottom:20px; right:20px;
+    width:80px; height:100px;
+    border-radius:16px;
+    border:2px solid white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    overflow:hidden;
+    z-index:10;
+    background:#000;
+  }
+  .camera-preview video {
+    width:100%; height:100%; object-fit:cover;
+    transform: scaleX(-1);
+  }
 
-        @media (min-width: 1200px) {
-            .message {
-                font-size: 3.8rem;
-            }
-            .submessage {
-                font-size: 1.5rem;
-            }
-        }
-    </style>
+  /* UI elements */
+  .ui-bar {
+    position:fixed; top:10px; left:10px; right:10px;
+    display:flex; justify-content:space-between;
+    align-items:center;
+    z-index:10;
+    color:white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .name { font-size:24px; font-weight:bold; }
+  .settings-icon { font-size:28px; cursor:pointer; }
+
+  /* Tutorial overlay */
+  .tutorial {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background: rgba(0,0,0,0.8); z-index:20;
+    display:flex; justify-content:center; align-items:center;
+    flex-direction:column; gap:20px;
+    color:white; text-align:center;
+    padding:20px;
+  }
+  .tutorial button {
+    background: #ff8c94; border:none; padding:12px 30px;
+    border-radius:30px; font-size:18px; color:white;
+    cursor:pointer;
+  }
+</style>
 </head>
 <body>
-    <canvas id="heartCanvas"></canvas>
 
-    <div class="overlay">
-        <h1 class="message">You're Wonderful</h1>
-        <p class="submessage">just a little something for you</p>
+<!-- Bokeh background -->
+<div class="bokeh" id="bokeh"></div>
+
+<!-- UI Bar -->
+<div class="ui-bar">
+  <div class="name">Mira ✨</div>
+  <div class="settings-icon">⚙️</div>
+</div>
+
+<!-- Tutorial overlay (shown on first visit) -->
+<div class="tutorial" id="tutorial">
+  <h2>Let Mira see you blink!</h2>
+  <p>Allow camera access so she can mimic your blinks.</p>
+  <button id="startBtn">Start Experience</button>
+  <p style="font-size:12px; opacity:0.7;">(Your video stays on your device.)</p>
+</div>
+
+<!-- Character -->
+<div class="container">
+  <div class="character" id="character">
+    <div class="hair-back"></div>
+    <div class="twintail left"></div>
+    <div class="twintail right"></div>
+    <div class="face">
+      <div class="eyes">
+        <div class="eye left" id="leftEye"></div>
+        <div class="eye right" id="rightEye"></div>
+      </div>
+      <div class="cheek left" id="leftCheek"></div>
+      <div class="cheek right" id="rightCheek"></div>
+      <div class="mouth" id="mouth"></div>
     </div>
-
-    <div class="hint">✨ drag to explore ✨</div>
-
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
-            }
-        }
-    </script>
-
-    <script type="module">
-        import * as THREE from 'three';
-
-        // ─────────────────────────────────────
-        // DOM Elements
-        // ─────────────────────────────────────
-        const canvas = document.getElementById('heartCanvas');
-
-        // ─────────────────────────────────────
-        // Scene Setup
-        // ─────────────────────────────────────
-        const scene = new THREE.Scene();
-
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
-
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 60);
-        camera.position.set(0, 0.3, 11);
-        camera.lookAt(0, 0, 0);
-
-        // ─────────────────────────────────────
-        // Glow Particle Texture
-        // ─────────────────────────────────────
-        function createGlowTexture(size, innerColor, outerColor) {
-            const c = document.createElement('canvas');
-            c.width = size;
-            c.height = size;
-            const ctx = c.getContext('2d');
-            const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-            gradient.addColorStop(0, innerColor);
-            gradient.addColorStop(0.15, innerColor);
-            gradient.addColorStop(0.5, outerColor);
-            gradient.addColorStop(1, 'transparent');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, size, size);
-            return new THREE.CanvasTexture(c);
-        }
-
-        const glowTexSoft = createGlowTexture(64, 'rgba(255,255,255,1)', 'rgba(255,140,170,0.7)');
-        const glowTexSpark = createGlowTexture(48, 'rgba(255,255,240,1)', 'rgba(255,200,140,0.8)');
-        const glowTexStar = createGlowTexture(32, 'rgba(255,255,255,0.9)', 'rgba(200,200,240,0.5)');
-        const glowTexEmber = createGlowTexture(40, 'rgba(255,220,180,1)', 'rgba(255,150,80,0.6)');
-
-        // ─────────────────────────────────────
-        // Heart Group
-        // ─────────────────────────────────────
-        const heartGroup = new THREE.Group();
-        scene.add(heartGroup);
-
-        // ─────────────────────────────────────
-        // 3D Heart Particle Generation
-        // ─────────────────────────────────────
-        function heartX(t) {
-            return 16 * Math.pow(Math.sin(t), 3);
-        }
-
-        function heartY(t) {
-            return 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
-        }
-
-        const scale = 0.22;
-        const maxDepth = 2.6;
-        const depthLayers = 20;
-        const pointsPerLayer = 160;
-        const totalHeartPoints = depthLayers * pointsPerLayer;
-
-        const heartPositions = new Float32Array(totalHeartPoints * 3);
-        const heartColors = new Float32Array(totalHeartPoints * 3);
-
-        // Color palette for gradient (bottom to top)
-        const colorStops = [
-            { pos: 0.0, color: [0.85, 0.18, 0.28] }, // deep rose-red
-            { pos: 0.25, color: [0.92, 0.35, 0.42] }, // rose
-            { pos: 0.5, color: [0.96, 0.50, 0.58] }, // pink
-            { pos: 0.7, color: [0.98, 0.65, 0.72] }, // soft pink
-            { pos: 0.85, color: [0.99, 0.78, 0.84] }, // lighter pink
-            { pos: 1.0, color: [0.99, 0.88, 0.91] }, // near white pink
-        ];
-
-        function getHeartColor(normalizedY) {
-            const t = Math.max(0, Math.min(1, normalizedY));
-            let lower = colorStops[0];
-            let upper = colorStops[colorStops.length - 1];
-            for (let i = 0; i < colorStops.length - 1; i++) {
-                if (t >= colorStops[i].pos && t <= colorStops[i + 1].pos) {
-                    lower = colorStops[i];
-                    upper = colorStops[i + 1];
-                    break;
-                }
-            }
-            const range = upper.pos - lower.pos;
-            const frac = range > 0 ? (t - lower.pos) / range : 0;
-            return [
-                lower.color[0] + (upper.color[0] - lower.color[0]) * frac,
-                lower.color[1] + (upper.color[1] - lower.color[1]) * frac,
-                lower.color[2] + (upper.color[2] - lower.color[2]) * frac,
-            ];
-        }
-
-        // Precompute raw y-range for normalization
-        const sampleYs = [];
-        for (let i = 0; i < 500; i++) {
-            const t = (i / 500) * Math.PI * 2;
-            sampleYs.push(heartY(t) * scale);
-        }
-        const heartYMin = Math.min(...sampleYs);
-        const heartYMax = Math.max(...sampleYs);
-        const heartYRange = heartYMax - heartYMin;
-
-        let idx = 0;
-        for (let layer = 0; layer < depthLayers; layer++) {
-            const z = -maxDepth + (layer / (depthLayers - 1)) * 2 * maxDepth;
-            const depthRatio = Math.abs(z) / maxDepth;
-            const layerScale = Math.sqrt(Math.max(0, 1 - depthRatio * depthRatio));
-
-            for (let i = 0; i < pointsPerLayer; i++) {
-                const t = (i / pointsPerLayer) * Math.PI * 2 + (Math.random() - 0.5) * 0.08;
-                const hx = heartX(t) * scale * layerScale;
-                const hy = heartY(t) * scale * layerScale;
-                const hz = z;
-
-                // Small random displacement for organic feel
-                const jitter = 0.06;
-                heartPositions[idx * 3] = hx + (Math.random() - 0.5) * jitter;
-                heartPositions[idx * 3 + 1] = hy + (Math.random() - 0.5) * jitter;
-                heartPositions[idx * 3 + 2] = hz + (Math.random() - 0.5) * jitter * 0.5;
-
-                const normalizedY = (hy - heartYMin) / heartYRange;
-                const [r, g, b] = getHeartColor(normalizedY);
-                const brightnessVariation = 0.85 + Math.random() * 0.15;
-                heartColors[idx * 3] = r * brightnessVariation;
-                heartColors[idx * 3 + 1] = g * brightnessVariation;
-                heartColors[idx * 3 + 2] = b * brightnessVariation;
-
-                idx++;
-            }
-        }
-
-        const heartGeom = new THREE.BufferGeometry();
-        heartGeom.setAttribute('position', new THREE.BufferAttribute(heartPositions, 3));
-        heartGeom.setAttribute('color', new THREE.BufferAttribute(heartColors, 3));
-
-        const heartMat = new THREE.PointsMaterial({
-            size: 0.14,
-            map: glowTexSoft,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            depthTest: true,
-            transparent: true,
-            vertexColors: true,
-        });
-
-        const heartPoints = new THREE.Points(heartGeom, heartMat);
-        heartGroup.add(heartPoints);
-
-        // ─────────────────────────────────────
-        // Inner fill particles for volume
-        // ─────────────────────────────────────
-        const innerCount = 800;
-        const innerPositions = new Float32Array(innerCount * 3);
-        const innerColors = new Float32Array(innerCount * 3);
-
-        for (let i = 0; i < innerCount; i++) {
-            const t = Math.random() * Math.PI * 2;
-            const depthFrac = Math.random();
-            const zInner = (Math.random() - 0.5) * 2 * maxDepth * 0.85;
-            const depthRatio = Math.abs(zInner) / maxDepth;
-            const innerScale = Math.sqrt(Math.max(0, 1 - depthRatio * depthRatio)) * (0.4 + Math.random() * 0.55);
-
-            const hx = heartX(t) * scale * innerScale;
-            const hy = heartY(t) * scale * innerScale;
-            const hz = zInner;
-
-            const jitter = 0.1;
-            innerPositions[i * 3] = hx + (Math.random() - 0.5) * jitter;
-            innerPositions[i * 3 + 1] = hy + (Math.random() - 0.5) * jitter;
-            innerPositions[i * 3 + 2] = hz + (Math.random() - 0.5) * jitter * 0.5;
-
-            const normalizedY = (hy - heartYMin) / heartYRange;
-            const [r, g, b] = getHeartColor(Math.max(0, Math.min(1, normalizedY)));
-            const brightness = 0.5 + Math.random() * 0.4;
-            innerColors[i * 3] = r * brightness;
-            innerColors[i * 3 + 1] = g * brightness;
-            innerColors[i * 3 + 2] = b * brightness;
-        }
-
-        const innerGeom = new THREE.BufferGeometry();
-        innerGeom.setAttribute('position', new THREE.BufferAttribute(innerPositions, 3));
-        innerGeom.setAttribute('color', new THREE.BufferAttribute(innerColors, 3));
-
-        const innerMat = new THREE.PointsMaterial({
-            size: 0.09,
-            map: glowTexSoft,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            depthTest: true,
-            transparent: true,
-            vertexColors: true,
-            opacity: 0.7,
-        });
-
-        const innerPoints = new THREE.Points(innerGeom, innerMat);
-        heartGroup.add(innerPoints);
-
-        // ─────────────────────────────────────
-        // Orbiting Sparkles
-        // ─────────────────────────────────────
-        const sparkleCount = 200;
-        const sparkleData = [];
-        const sparklePositionsArr = new Float32Array(sparkleCount * 3);
-        const sparkleColorsArr = new Float32Array(sparkleCount * 3);
-
-        for (let i = 0; i < sparkleCount; i++) {
-            const orbitRadius = 3.8 + Math.random() * 3.5;
-            const angle = Math.random() * Math.PI * 2;
-            const phi = (Math.random() - 0.5) * Math.PI * 0.8;
-            const speed = 0.15 + Math.random() * 0.55;
-            const axis = Math.random() < 0.5 ? 'xz' : 'xy';
-            const phaseOffset = Math.random() * Math.PI * 2;
-
-            sparkleData.push({
-                orbitRadius,
-                angle,
-                phi,
-                speed,
-                axis,
-                phaseOffset,
-                baseY: (Math.random() - 0.5) * 1.5,
-            });
-
-            sparkleColorsArr[i * 3] = 0.95 + Math.random() * 0.05;
-            sparkleColorsArr[i * 3 + 1] = 0.7 + Math.random() * 0.25;
-            sparkleColorsArr[i * 3 + 2] = 0.35 + Math.random() * 0.4;
-        }
-
-        const sparkleGeom = new THREE.BufferGeometry();
-        sparkleGeom.setAttribute('position', new THREE.BufferAttribute(sparklePositionsArr, 3));
-        sparkleGeom.setAttribute('color', new THREE.BufferAttribute(sparkleColorsArr, 3));
-
-        const sparkleMat = new THREE.PointsMaterial({
-            size: 0.12,
-            map: glowTexSpark,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            depthTest: true,
-            transparent: true,
-            vertexColors: true,
-            opacity: 0.85,
-        });
-
-        const sparklePoints = new THREE.Points(sparkleGeom, sparkleMat);
-        heartGroup.add(sparklePoints);
-
-        // ─────────────────────────────────────
-        // Floating Embers
-        // ─────────────────────────────────────
-        const emberCount = 100;
-        const emberData = [];
-        const emberPositionsArr = new Float32Array(emberCount * 3);
-        const emberColorsArr = new Float32Array(emberCount * 3);
-
-        const emberYMin = heartYMin - 1.5;
-        const emberYMax = heartYMax + 2.5;
-
-        for (let i = 0; i < emberCount; i++) {
-            const ex = (Math.random() - 0.5) * 8;
-            const ey = emberYMin + Math.random() * (emberYMax - emberYMin);
-            const ez = (Math.random() - 0.5) * 5;
-            const speed = 0.3 + Math.random() * 0.9;
-            const sway = 0.2 + Math.random() * 0.5;
-            const life = Math.random();
-
-            emberData.push({
-                baseX: ex,
-                y: ey,
-                z: ez,
-                speed,
-                sway,
-                life,
-                phase: Math.random() * Math.PI * 2,
-            });
-
-            emberPositionsArr[i * 3] = ex;
-            emberPositionsArr[i * 3 + 1] = ey;
-            emberPositionsArr[i * 3 + 2] = ez;
-
-            emberColorsArr[i * 3] = 1;
-            emberColorsArr[i * 3 + 1] = 0.55 + Math.random() * 0.35;
-            emberColorsArr[i * 3 + 2] = 0.15 + Math.random() * 0.3;
-        }
-
-        const emberGeom = new THREE.BufferGeometry();
-        emberGeom.setAttribute('position', new THREE.BufferAttribute(emberPositionsArr, 3));
-        emberGeom.setAttribute('color', new THREE.BufferAttribute(emberColorsArr, 3));
-
-        const emberMat = new THREE.PointsMaterial({
-            size: 0.08,
-            map: glowTexEmber,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            depthTest: true,
-            transparent: true,
-            vertexColors: true,
-            opacity: 0.7,
-        });
-
-        const emberPoints = new THREE.Points(emberGeom, emberMat);
-        heartGroup.add(emberPoints);
-
-        // ─────────────────────────────────────
-        // Background Stars
-        // ─────────────────────────────────────
-        const starCount = 600;
-        const starPositionsArr = new Float32Array(starCount * 3);
-        const starColorsArr = new Float32Array(starCount * 3);
-
-        for (let i = 0; i < starCount; i++) {
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.acos(2 * Math.random() - 1);
-            const radius = 14 + Math.random() * 20;
-            starPositionsArr[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-            starPositionsArr[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-            starPositionsArr[i * 3 + 2] = radius * Math.cos(phi);
-
-            const brightness = 0.4 + Math.random() * 0.6;
-            const tint = Math.random();
-            if (tint < 0.3) {
-                starColorsArr[i * 3] = 0.8 * brightness;
-                starColorsArr[i * 3 + 1] = 0.85 * brightness;
-                starColorsArr[i * 3 + 2] = 1 * brightness;
-            } else if (tint < 0.5) {
-                starColorsArr[i * 3] = 1 * brightness;
-                starColorsArr[i * 3 + 1] = 0.9 * brightness;
-                starColorsArr[i * 3 + 2] = 0.7 * brightness;
-            } else {
-                starColorsArr[i * 3] = 0.95 * brightness;
-                starColorsArr[i * 3 + 1] = 0.95 * brightness;
-                starColorsArr[i * 3 + 2] = 0.95 * brightness;
-            }
-        }
-
-        const starGeom = new THREE.BufferGeometry();
-        starGeom.setAttribute('position', new THREE.BufferAttribute(starPositionsArr, 3));
-        starGeom.setAttribute('color', new THREE.BufferAttribute(starColorsArr, 3));
-
-        const starMat = new THREE.PointsMaterial({
-            size: 0.08,
-            map: glowTexStar,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            depthTest: false,
-            transparent: true,
-            vertexColors: true,
-            opacity: 0.8,
-        });
-
-        const starPoints = new THREE.Points(starGeom, starMat);
-        starPoints.renderOrder = -1;
-        scene.add(starPoints);
-
-        // ─────────────────────────────────────
-        // Interaction State
-        // ─────────────────────────────────────
-        const pointer = { x: 0, y: 0, active: false };
-        const targetRotation = { x: 0, y: 0 };
-        const currentRotation = { x: 0, y: 0 };
-        const autoRotationSpeed = 0.25;
-        let lastInteractionTime = 0;
-        const idleTimeout = 2500;
-
-        function updatePointer(clientX, clientY) {
-            pointer.x = (clientX / window.innerWidth) * 2 - 1;
-            pointer.y = -(clientY / window.innerHeight) * 2 + 1;
-            pointer.active = true;
-            lastInteractionTime = performance.now();
-        }
-
-        // Mouse events
-        window.addEventListener('mousemove', (e) => {
-            updatePointer(e.clientX, e.clientY);
-        });
-        window.addEventListener('mouseleave', () => {
-            pointer.active = false;
-        });
-        window.addEventListener('mouseenter', (e) => {
-            updatePointer(e.clientX, e.clientY);
-        });
-
-        // Touch events
-        window.addEventListener('touchstart', (e) => {
-            if (e.touches.length > 0) {
-                updatePointer(e.touches[0].clientX, e.touches[0].clientY);
-            }
-        }, { passive: true });
-
-        window.addEventListener('touchmove', (e) => {
-            if (e.touches.length > 0) {
-                updatePointer(e.touches[0].clientX, e.touches[0].clientY);
-            }
-        }, { passive: true });
-
-        window.addEventListener('touchend', () => {
-            pointer.active = false;
-        });
-
-        // ─────────────────────────────────────
-        // Resize Handler
-        // ─────────────────────────────────────
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // Handle orientation change on mobile
-        window.addEventListener('orientationchange', () => {
-            setTimeout(() => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }, 300);
-        });
-
-        // ─────────────────────────────────────
-        // Animation Loop
-        // ─────────────────────────────────────
-        const clock = new THREE.Clock();
-        let entranceProgress = 0;
-        const entranceDuration = 2.2;
-
-        function animate(timestamp) {
-            requestAnimationFrame(animate);
-
-            const dt = Math.min(clock.getDelta(), 0.1);
-            const elapsed = timestamp * 0.001;
-
-            // Entrance animation
-            if (entranceProgress < 1) {
-                entranceProgress = Math.min(1, entranceProgress + dt / entranceDuration);
-                const ease = 1 - Math.pow(1 - entranceProgress, 3);
-                const s = 0.2 + ease * 0.8;
-                heartGroup.scale.setScalar(s);
-            }
-
-            // Determine if auto-rotating
-            const timeSinceInteraction = timestamp - lastInteractionTime;
-            const isIdle = timeSinceInteraction > idleTimeout;
-
-            if (pointer.active || !isIdle) {
-                const maxRotX = 0.5;
-                const maxRotY = 0.7;
-                targetRotation.y = pointer.x * maxRotY;
-                targetRotation.x = -pointer.y * maxRotX;
-                if (!pointer.active && isIdle) {
-                    targetRotation.y = Math.sin(elapsed * autoRotationSpeed) * 0.55;
-                    targetRotation.x = Math.cos(elapsed * autoRotationSpeed * 0.7) * 0.25;
-                }
-            } else {
-                targetRotation.y = Math.sin(elapsed * autoRotationSpeed) * 0.55;
-                targetRotation.x = Math.cos(elapsed * autoRotationSpeed * 0.7) * 0.25;
-            }
-
-            // Smooth lerp rotation
-            const lerpSpeed = 3.5;
-            currentRotation.x += (targetRotation.x - currentRotation.x) * lerpSpeed * dt;
-            currentRotation.y += (targetRotation.y - currentRotation.y) * lerpSpeed * dt;
-
-            heartGroup.rotation.x = currentRotation.x;
-            heartGroup.rotation.y = currentRotation.y;
-
-            // Gentle pulse
-            const pulse = 1 + Math.sin(elapsed * 0.8) * 0.025 + Math.sin(elapsed * 1.3) * 0.015;
-            if (entranceProgress >= 1) {
-                heartGroup.scale.setScalar(pulse);
-            }
-
-            // Update orbiting sparkles
-            const sparklePos = sparklePoints.geometry.attributes.position.array;
-            for (let i = 0; i < sparkleCount; i++) {
-                const sd = sparkleData[i];
-                const progressedAngle = sd.angle + elapsed * sd.speed;
-                const r = sd.orbitRadius;
-
-                if (sd.axis === 'xz') {
-                    sparklePos[i * 3] = Math.cos(progressedAngle) * r;
-                    sparklePos[i * 3 + 1] = sd.baseY + Math.sin(elapsed * 0.5 + sd.phaseOffset) * 0.8;
-                    sparklePos[i * 3 + 2] = Math.sin(progressedAngle) * r;
-                } else {
-                    sparklePos[i * 3] = Math.cos(progressedAngle) * r;
-                    sparklePos[i * 3 + 1] = Math.sin(progressedAngle) * r * 0.7;
-                    sparklePos[i * 3 + 2] = Math.sin(elapsed * 0.4 + sd.phaseOffset) * 1.2;
-                }
-            }
-            sparklePoints.geometry.attributes.position.needsUpdate = true;
-
-            // Update floating embers
-            const emberPos = emberPoints.geometry.attributes.position.array;
-            for (let i = 0; i < emberCount; i++) {
-                const ed = emberData[i];
-                ed.y += ed.speed * dt;
-                if (ed.y > emberYMax) {
-                    ed.y = emberYMin;
-                    ed.baseX = (Math.random() - 0.5) * 8;
-                    ed.z = (Math.random() - 0.5) * 5;
-                }
-                const swayX = Math.sin(elapsed * ed.sway * 2 + ed.phase) * 0.4;
-                const swayZ = Math.cos(elapsed * ed.sway * 1.7 + ed.phase) * 0.35;
-                emberPos[i * 3] = ed.baseX + swayX;
-                emberPos[i * 3 + 1] = ed.y;
-                emberPos[i * 3 + 2] = ed.z + swayZ;
-            }
-            emberPoints.geometry.attributes.position.needsUpdate = true;
-
-            // Slowly rotate background stars
-            starPoints.rotation.y += dt * 0.03;
-            starPoints.rotation.x += dt * 0.015;
-
-            // Subtle sparkle twinkle via opacity
-            sparkleMat.opacity = 0.75 + Math.sin(elapsed * 2.5) * 0.1;
-            emberMat.opacity = 0.6 + Math.sin(elapsed * 3.1) * 0.12;
-
-            // Render
-            renderer.render(scene, camera);
-        }
-
-        // ─────────────────────────────────────
-        // Start
-        // ─────────────────────────────────────
-        requestAnimationFrame(animate);
-
-        // ─────────────────────────────────────
-        // Log welcome message
-        // ─────────────────────────────────────
-        console.log('%c💖 %cMade with love — just for you %c💖',
-            'font-size:1.2em;',
-            'font-size:1em;color:#ff8fab;',
-            'font-size:1.2em;');
-        console.log('%c✨ Gently drag the heart to explore it from every angle ✨',
-            'color:#ffb3c6;font-style:italic;');
-    </script>
+    <div class="question-mark" id="questionMark">❓</div>
+  </div>
+</div>
+
+<!-- Camera preview -->
+<div class="camera-preview" id="cameraPreview" style="display:none;">
+  <video id="video" playsinline autoplay muted></video>
+</div>
+
+<script>
+// ========== GLOBAL VARIABLES ==========
+const video = document.getElementById('video');
+const leftEyeEl = document.getElementById('leftEye');
+const rightEyeEl = document.getElementById('rightEye');
+const mouthEl = document.getElementById('mouth');
+const leftCheek = document.getElementById('leftCheek');
+const rightCheek = document.getElementById('rightCheek');
+const questionMark = document.getElementById('questionMark');
+const startBtn = document.getElementById('startBtn');
+const tutorial = document.getElementById('tutorial');
+const cameraPreview = document.getElementById('cameraPreview');
+
+let faceDetectionInterval;
+let lastBlinkTime = 0;
+let isUserBlinking = false;
+let autoBlinkTimeout;
+let faceLostTimer;
+let faceLost = false;
+
+// EAR threshold for closed eyes
+const EAR_THRESHOLD = 0.25;
+// Smile threshold (mouth aspect ratio)
+const MAR_THRESHOLD = 0.6;
+
+// ========== BOKEH CREATION ==========
+function createBokeh() {
+  const bokehContainer = document.getElementById('bokeh');
+  for (let i=0; i<15; i++) {
+    const span = document.createElement('span');
+    const size = Math.random() * 80 + 20;
+    span.style.width = size + 'px';
+    span.style.height = size + 'px';
+    span.style.left = Math.random()*100 + '%';
+    span.style.top = Math.random()*100 + '%';
+    span.style.animationDelay = Math.random()*8 + 's';
+    bokehContainer.appendChild(span);
+  }
+}
+createBokeh();
+
+// ========== ANIMATION HELPERS ==========
+function blinkEyes(closeDuration = 150) {
+  const eyes = [leftEyeEl, rightEyeEl];
+  eyes.forEach(eye => eye.classList.add('closed'));
+  setTimeout(() => {
+    eyes.forEach(eye => eye.classList.remove('closed'));
+  }, closeDuration);
+}
+
+// Autonomous blink every 3-4 seconds if user not blinking
+function scheduleAutoBlink() {
+  clearTimeout(autoBlinkTimeout);
+  const delay = 3000 + Math.random() * 1500;
+  autoBlinkTimeout = setTimeout(() => {
+    if (!isUserBlinking) {
+      blinkEyes(150);
+    }
+    scheduleAutoBlink(); // loop
+  }, delay);
+}
+
+// Smile detection -> cheeks blush + bigger smile mouth
+function setSmileState(smiling) {
+  if (smiling) {
+    leftCheek.classList.add('blush');
+    rightCheek.classList.add('blush');
+    mouthEl.classList.add('smile');
+  } else {
+    leftCheek.classList.remove('blush');
+    rightCheek.classList.remove('blush');
+    mouthEl.classList.remove('smile');
+  }
+}
+
+// Show/hide question mark when face lost
+function setFaceLost(lost) {
+  if (lost && !faceLost) {
+    questionMark.style.display = 'block';
+    faceLost = true;
+  } else if (!lost && faceLost) {
+    questionMark.style.display = 'none';
+    faceLost = false;
+  }
+}
+
+// ========== EYE ASPECT RATIO (EAR) ==========
+function eyeAspectRatio(eye) {
+  const A = distance(eye[1], eye[5]);
+  const B = distance(eye[2], eye[4]);
+  const C = distance(eye[0], eye[3]);
+  return (A + B) / (2.0 * C);
+}
+function distance(pt1, pt2) {
+  return Math.sqrt(Math.pow(pt1.x - pt2.x, 2) + Math.pow(pt1.y - pt2.y, 2));
+}
+
+// ========== MOUTH ASPECT RATIO (MAR) for smile ==========
+function mouthAspectRatio(mouth) {
+  // mouth landmarks: 48-67 (20 points). Use outer contour points: 48-54 top, 54-60 bottom?
+  // Simpler: use width of mouth (distance between corners 48 and 54) and height (distance 51 and 57)
+  const leftCorner = mouth[0];   // 48
+  const rightCorner = mouth[6]; // 54
+  const topLip = mouth[3];      // 51
+  const bottomLip = mouth[9];   // 57
+  const width = distance(leftCorner, rightCorner);
+  const height = distance(topLip, bottomLip);
+  return height / width;
+}
+
+// ========== FACE DETECTION LOOP ==========
+async function onFaceDetected() {
+  if (!video.paused && !video.ended) {
+    const detections = await faceapi.detectSingleFace(video,
+      new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }))
+      .withFaceLandmarks();
+
+    if (detections && detections.landmarks) {
+      // Face found: clear lost timer
+      if (faceLost) {
+        setFaceLost(false);
+        clearTimeout(faceLostTimer);
+      }
+
+      const landmarks = detections.landmarks;
+      const leftEye = landmarks.getLeftEye();
+      const rightEye = landmarks.getRightEye();
+      const mouthPoints = landmarks.getMouth();
+
+      // Blink detection
+      const earLeft = eyeAspectRatio(leftEye);
+      const earRight = eyeAspectRatio(rightEye);
+      const avgEAR = (earLeft + earRight) / 2;
+
+      const now = Date.now();
+      if (avgEAR < EAR_THRESHOLD && !isUserBlinking && (now - lastBlinkTime) > 300) {
+        // User blinked
+        isUserBlinking = true;
+        lastBlinkTime = now;
+        blinkEyes(150);
+        setTimeout(() => { isUserBlinking = false; }, 300); // cooldown
+      }
+
+      // Smile detection
+      const mar = mouthAspectRatio(mouthPoints);
+      setSmileState(mar > MAR_THRESHOLD);
+
+      // Reset face lost timer
+      clearTimeout(faceLostTimer);
+      faceLostTimer = setTimeout(() => {
+        setFaceLost(true);
+      }, 2000);
+    } else {
+      // No face detected -> start timer
+      clearTimeout(faceLostTimer);
+      faceLostTimer = setTimeout(() => {
+        setFaceLost(true);
+      }, 2000);
+    }
+  }
+}
+
+// ========== START CAMERA & DETECTION ==========
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 240 } }
+    });
+    video.srcObject = stream;
+    video.play();
+
+    // Show camera preview
+    cameraPreview.style.display = 'block';
+
+    // Load face-api models (they must be in /models folder)
+    await faceapi.nets.tinyFaceDetector.load('/models/');
+    await faceapi.nets.faceLandmark68Net.load('/models/');
+
+    // Start detection loop (every 120ms ~8fps)
+    faceDetectionInterval = setInterval(onFaceDetected, 120);
+
+    // Start autonomous blinking
+    scheduleAutoBlink();
+
+    // Hide tutorial
+    tutorial.style.display = 'none';
+    localStorage.setItem('miraTutorialShown', 'true');
+  } catch (err) {
+    alert('Camera access denied or not available. Please allow camera permissions.');
+    console.error(err);
+  }
+}
+
+// ========== INITIALIZATION ==========
+window.addEventListener('load', () => {
+  // Check if tutorial already shown
+  if (localStorage.getItem('miraTutorialShown') === 'true') {
+    tutorial.style.display = 'none';
+    startCamera();
+  } else {
+    tutorial.style.display = 'flex';
+  }
+});
+
+startBtn.addEventListener('click', startCamera);
+
+// Cleanup on page unload (optional)
+window.addEventListener('beforeunload', () => {
+  clearInterval(faceDetectionInterval);
+  clearTimeout(faceLostTimer);
+  clearTimeout(autoBlinkTimeout);
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+  }
+});
+</script>
 </body>
-  </html>
+    </html>
