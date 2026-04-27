@@ -1,1 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Open City Driving Sim</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
+    #hud { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 2px 2px 4px black; pointer-events: none; user-select: none; z-index: 10; }
+    #minimap { position: absolute; bottom: 20px; right: 20px; width: 180px; height: 180px; border: 2px solid white; border-radius: 10px; background: rgba(0,0,0,0.6); }
+    .interact-btn { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: #ffaa00; color: black; padding: 10px 30px; border: none; border-radius: 20px; font-weight: bold; display: none; cursor: pointer; z-index: 20; }
+    #secret-input { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: #0f0; border: 1px solid #0f0; padding: 5px; display: none; z-index: 100; }
+    .dev-badge { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: gold; color: black; padding: 5px 20px; font-weight: bold; display: none; z-index: 100; }
+    #garage-panel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(20,20,20,0.95); color: white; padding: 30px; border-radius: 15px; display: none; flex-direction: column; gap: 10px; z-index: 200; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div>💰 Cash: <span id="cash">500</span></div>
+    <div>🏎️ Speed: <span id="speed">0</span> km/h</div>
+    <div>⛽ Fuel: <span id="fuel">100</span>%</div>
+    <div>🔧 Damage: <span id="damage">0</span>%</div>
+    <div>🌡️ Mission: <span id="mission">None</span></div>
+  </div>
+  <canvas id="minimap" width="180" height="180"></canvas>
+  <button class="interact-btn" id="interact-btn">Press E to interact</button>
+  <input type="text" id="secret-input" placeholder="Enter code..." maxlength="20">
+  <div class="dev-badge" id="dev-badge">👑 DEV MODE</div>
+  <div id="garage-panel">
+    <h2>Garage</h2>
+    <button id="repair-btn">Repair (100💰)</button>
+    <button id="color-btn">Random Color (50💰)</button>
+    <button id="upgrade-btn">Engine Upgrade (300💰)</button>
+    <button id="close-garage">Close</button>
+  </div>
 
+  <!-- CDN scripts – everything loads from the internet -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+
+  <script>
+    // ---------- GAME START ----------
+    const SECRET_CODE = "PRIYANSHU777";
+
+    const state = {
+      cash: 500, fuel: 100, damage: 0, maxFuel: 100, speed: 0,
+      missionActive: false, devMode: false, ownedCars: ['hatchback'],
+      currentCarType: 'hatchback', carUpgrades: { engine: 0 }, nearbyInteract: null,
+    };
+
+    const carStats = {
+      hatchback: { speed: 50, accel: 30, handling: 0.5, price: 0 },
+      sedan: { speed: 70, accel: 35, handling: 0.6, price: 800 },
+      suv: { speed: 60, accel: 25, handling: 0.4, price: 1200 },
+      supercar: { speed: 100, accel: 50, handling: 0.9, price: 5000 },
+    };
+
+    // Three.js setup
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 200, 600);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000); camera.position.set(0, 15, 25);
+    const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; document.body.appendChild(renderer.domElement);
+    const ambientLight = new THREE.AmbientLight(0x404066); scene.add(ambientLight);
+    const sunLight = new THREE.DirectionalLight(0xffffcc, 1.2); sunLight.position.set(50, 100, 50); sunLight.castShadow = true; sunLight.shadow.mapSize.width = 1024; sunLight.shadow.mapSize.height = 1024; sunLight.shadow.camera.near = 0.5; sunLight.shadow.camera.far = 300; sunLight.shadow.camera.left = -100; sunLight.shadow.camera.right = 100; sunLight.shadow.camera.top = 100; sunLight.shadow.camera.bottom = -100; scene.add(sunLight);
+
+    // Physics
+    const world = new CANNON.World(); world.gravity.set(0, -20, 0); world.broadphase = new CANNON.SAPBroadphase(world); world.defaultContactMaterial.restitution = 0.1;
+    const groundShape = new CANNON.Plane(); const groundBody = new CANNON.Body({ mass: 0 }); groundBody.addShape(groundShape); groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0); world.addBody(groundBody);
+    const groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.9 })); groundMesh.rotation.x = -Math.PI/2; groundMesh.receiveShadow = true; scene.add(groundMesh);
+
+    function createRoad(x,z,w,l,r=0){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,l),new THREE.MeshStandardMaterial({color:0x444444})); m.rotation.x=-Math.PI/2; m.position.set(x,0.01,z); m.rotation.z=r; m.receiveShadow=true; scene.add(m); }
+    function createBuilding(x,z,w,h,d,c){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:c})); m.position.set(x,h/2,z); m.castShadow=m.receiveShadow=true; scene.add(m); }
+    createRoad(0,0,20,200); createRoad(0,0,200,20); createRoad(80,0,20,200); createRoad(-80,0,20,200);
+    for(let i=-180;i<=180;i+=40){ if(i!==0){ createBuilding(i,-30,15,15+Math.random()*15,15,0x8888aa); createBuilding(i,30,15,15+Math.random()*15,15,0xaa88aa); } }
+    for(let i=-180;i<=180;i+=40){ createBuilding(-30,i,15,15+Math.random()*15,15,0x88aa88); createBuilding(30,i,15,15+Math.random()*15,15,0xaa8888); }
+
+    function createTextTexture(t){ const c=document.createElement('canvas'); c.width=128; c.height=64; const x=c.getContext('2d'); x.fillStyle='white'; x.font='Bold 20px Arial'; x.textAlign='center'; x.fillText(t,64,32); return new THREE.CanvasTexture(c); }
+    function createMarker(x,z,t,col=0xffaa00){ const m=new THREE.Mesh(new THREE.CylinderGeometry(2,2,0.1,16),new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:0.4})); m.position.set(x,0.05,z); scene.add(m); const s=new THREE.Sprite(new THREE.SpriteMaterial({map:createTextTexture(t),transparent:true})); s.scale.set(4,2,1); s.position.set(x,3,z); scene.add(s); return {mesh:m,pos:new THREE.Vector3(x,0,z),type:t.toLowerCase()}; }
+    const locations=[ createMarker(50,50,'Gas Station',0x00ff00), createMarker(-50,-50,'Dealership',0x0000ff), createMarker(50,-50,'Garage',0xff00ff), createMarker(-50,50,'Passenger',0xffff00) ];
+
+    let vehicle,chassisBody; const wheelMeshes=[]; let carBodyMesh;
+    function createCar(type='hatchback'){
+      if(chassisBody)world.remove(chassisBody); wheelMeshes.forEach(m=>scene.remove(m)); if(carBodyMesh)scene.remove(carBodyMesh);
+      const sh=new CANNON.Box(new CANNON.Vec3(1.8,0.6,3.2)); chassisBody=new CANNON.Body({mass:500}); chassisBody.addShape(sh); chassisBody.position.set(0,3,0); chassisBody.angularDamping=0.3; world.addBody(chassisBody);
+      vehicle=new CANNON.RaycastVehicle({chassisBody,indexRightAxis:0,indexUpAxis:1,indexForwardAxis:2});
+      const opt={radius:0.7,directionLocal:new CANNON.Vec3(0,-1,0),suspensionStiffness:30,suspensionRestLength:0.3,frictionSlip:3.0,dampingRelaxation:2.3,dampingCompression:4.4,maxSuspensionForce:100000,rollInfluence:0.01,axleLocal:new CANNON.Vec3(-1,0,0),chassisConnectionPointLocal:new CANNON.Vec3(1,0,1),maxSuspensionTravel:0.3,customSlidingRotationalSpeed:-30,useCustomSlidingRotationalSpeed:true};
+      opt.chassisConnectionPointLocal.set(-1.2,-0.2,1.8); vehicle.addWheel(opt);
+      opt.chassisConnectionPointLocal.set(1.2,-0.2,1.8); vehicle.addWheel(opt);
+      opt.chassisConnectionPointLocal.set(-1.2,-0.2,-1.8); vehicle.addWheel(opt);
+      opt.chassisConnectionPointLocal.set(1.2,-0.2,-1.8); vehicle.addWheel(opt);
+      vehicle.addToWorld(world);
+      for(let i=0;i<4;i++){ const g=new THREE.CylinderGeometry(0.7,0.7,0.4,16); const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x222222})); m.castShadow=m.receiveShadow=true; scene.add(m); wheelMeshes[i]=m; }
+      carBodyMesh=new THREE.Mesh(new THREE.BoxGeometry(2.4,0.8,4.2),new THREE.MeshStandardMaterial({color:0xff3333,roughness:0.4})); carBodyMesh.castShadow=carBodyMesh.receiveShadow=true; scene.add(carBodyMesh);
+      const wm=new THREE.Mesh(new THREE.BoxGeometry(2,0.6,2),new THREE.MeshStandardMaterial({color:0x88ccff,transparent:true,opacity:0.7})); wm.position.y=0.5; carBodyMesh.add(wm);
+      state.currentCarType=type; state.fuel=state.maxFuel; state.damage=0;
+    }
+    createCar('hatchback');
+
+    const traffic=[];
+    for(let i=0;i<8;i++){ const c=new THREE.Mesh(new THREE.BoxGeometry(2,1.5,3.5),new THREE.MeshStandardMaterial({color:0x3366cc})); c.castShadow=c.receiveShadow=true; c.position.set((Math.random()-0.5)*160,0.75,(Math.random()-0.5)*160); c.userData={speed:0.1+Math.random()*0.2,dir:new THREE.Vector3(Math.random()*2-1,0,Math.random()*2-1).normalize()}; scene.add(c); traffic.push(c); }
+
+    const keys={};
+    window.addEventListener('keydown',e=>{keys[e.key]=true;e.preventDefault();});
+    window.addEventListener('keyup',e=>{keys[e.key]=false;e.preventDefault();});
+    window.addEventListener('keydown',e=>{
+      if(e.key==='`'||e.key==='~'){
+        e.preventDefault(); const inp=document.getElementById('secret-input'); inp.style.display='block'; inp.focus();
+        function h(ev){ if(ev.key==='Enter'){ if(inp.value===SECRET_CODE)activateDevMode(); inp.style.display='none'; inp.value=''; inp.removeEventListener('keydown',h); } }
+        inp.addEventListener('keydown',h);
+      }
+    });
+    function activateDevMode(){ state.devMode=true; state.cash=9999999; state.damage=0; state.fuel=999; state.ownedCars=Object.keys(carStats); document.getElementById('dev-badge').style.display='block'; updateHUD(); }
+    if(window.location.search.includes('dev=true'))activateDevMode();
+
+    window.addEventListener('keydown',e=>{ if(e.key==='e'||e.key==='E'){ if(state.nearbyInteract)handleInteract(state.nearbyInteract); } });
+    function handleInteract(type){
+      if(type==='gas station'){ if(state.cash>=50&&state.fuel<state.maxFuel){ state.cash-=50; state.fuel=state.maxFuel; } }
+      else if(type==='dealership'){ const av=Object.keys(carStats).filter(c=>!state.ownedCars.includes(c)&&carStats[c].price<=state.cash); if(av.length>0){ const b=av[0]; state.cash-=carStats[b].price; state.ownedCars.push(b); alert('You bought a '+b+'!'); } else alert('No affordable cars or all owned.'); }
+      else if(type==='garage'){ document.getElementById('garage-panel').style.display='flex'; }
+      else if(type==='passenger'&&!state.missionActive){
+        state.missionActive=true; state.currentMission={type:'taxi',destination:new THREE.Vector3((Math.random()-0.5)*100,0,(Math.random()-0.5)*100),marker:null};
+        const mk=new THREE.Mesh(new THREE.SphereGeometry(1,8,8),new THREE.MeshStandardMaterial({color:0xff0000,emissive:0xff0000})); mk.position.copy(state.currentMission.destination); mk.position.y=2; scene.add(mk); state.currentMission.marker=mk;
+        alert('Passenger picked up! Drive to the red marker.');
+      }
+    }
+    document.getElementById('repair-btn').onclick=()=>{ if(state.cash>=100){ state.cash-=100; state.damage=0; } };
+    document.getElementById('color-btn').onclick=()=>{ if(state.cash>=50){ state.cash-=50; carBodyMesh.material.color.setHex(Math.random()*0xffffff); } };
+    document.getElementById('upgrade-btn').onclick=()=>{ if(state.cash>=300){ state.cash-=300; state.carUpgrades.engine++; } };
+    document.getElementById('close-garage').onclick=()=>{ document.getElementById('garage-panel').style.display='none'; };
+
+    function updateHUD(){
+      document.getElementById('cash').textContent=state.cash;
+      document.getElementById('speed').textContent=Math.floor(state.speed*3.6);
+      document.getElementById('fuel').textContent=Math.floor(state.fuel);
+      document.getElementById('damage').textContent=Math.floor(state.damage);
+      document.getElementById('mission').textContent=state.missionActive?'Taxi: Deliver passenger':'None';
+    }
+
+    const clock=new THREE.Clock();
+    function animate(){
+      requestAnimationFrame(animate);
+      const dt=Math.min(clock.getDelta(),0.1);
+      const time=performance.now()*0.0001;
+      sunLight.intensity=0.5+Math.sin(time)*0.5;
+      scene.background=new THREE.Color(0.3+Math.sin(time)*0.3,0.5+Math.sin(time)*0.3,0.9);
+      world.step(1/60);
+      if(!vehicle)return;
+      const steer=(keys['ArrowLeft']||keys['a'])?0.5:(keys['ArrowRight']||keys['d'])?-0.5:0;
+      const force=400+state.carUpgrades.engine*50;
+      const engineForce=(keys['ArrowUp']||keys['w'])?-force:(keys['ArrowDown']||keys['s'])?force/2:0;
+      const brake=(keys[' ']||keys['Space'])?100:0;
+      vehicle.setSteeringValue(steer,0); vehicle.setSteeringValue(steer,1);
+      vehicle.applyEngineForce(engineForce,2); vehicle.applyEngineForce(engineForce,3);
+      vehicle.setBrake(brake,0); vehicle.setBrake(brake,1); vehicle.setBrake(brake,2); vehicle.setBrake(brake,3);
+      if(engineForce!==0&&state.fuel>0&&!state.devMode){ state.fuel-=Math.abs(engineForce)*0.001; if(state.fuel<0)state.fuel=0; }
+      if(state.damage>=100){ vehicle.applyEngineForce(0,2); vehicle.applyEngineForce(0,3); }
+      vehicle.updateVehicleWorld(chassisBody);
+      carBodyMesh.position.copy(chassisBody.position); carBodyMesh.quaternion.copy(chassisBody.quaternion);
+      vehicle.wheelInfos.forEach((w,i)=>{ vehicle.updateWheelTransform(i); const t=w.worldTransform; wheelMeshes[i].position.copy(t.position); wheelMeshes[i].quaternion.copy(t.quaternion); });
+      state.speed=chassisBody.velocity.length();
+      const carPos=chassisBody.position;
+      const camOffset=new THREE.Vector3(0,5,10); camOffset.applyQuaternion(chassisBody.quaternion); camera.position.lerp(carPos.clone().add(camOffset),0.1); camera.lookAt(carPos);
+      if(chassisBody.velocity.length()>8&&!state.devMode)state.damage+=0.1;
+      traffic.forEach(c=>{ c.position.x+=c.userData.dir.x*c.userData.speed; c.position.z+=c.userData.dir.z*c.userData.speed; if(Math.abs(c.position.x)>90||Math.abs(c.position.z)>90){ c.userData.dir.x*=-1; c.userData.dir.z*=-1; } });
+      state.nearbyInteract=null; locations.forEach(loc=>{ if(carPos.distanceTo(loc.pos)<8)state.nearbyInteract=loc.type; });
+      document.getElementById('interact-btn').style.display=state.nearbyInteract?'block':'none';
+      if(state.missionActive&&state.currentMission?.destination){ if(carPos.distanceTo(state.currentMission.destination)<5){ state.cash+=200; state.missionActive=false; scene.remove(state.currentMission.marker); state.currentMission=null; alert('Mission complete! +200 cash'); } }
+      const mm=document.getElementById('minimap'); const ctx=mm.getContext('2d'); ctx.clearRect(0,0,180,180); ctx.fillStyle='#333'; ctx.fillRect(0,0,180,180);
+      ctx.strokeStyle='#888'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(90,0); ctx.lineTo(90,180); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,90); ctx.lineTo(180,90); ctx.stroke();
+      const px=(carPos.x/200)*180+90, pz=(carPos.z/200)*180+90; ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(px,pz,4,0,Math.PI*2); ctx.fill();
+      updateHUD(); renderer.render(scene,camera);
+    }
+    animate();
+    window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
+  </script>
+</body>
+                                      </html>
