@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Mira – Blink Mirror</title>
+<title>Diksha – Blink Mirror</title>
 <script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    background: radial-gradient(circle at 20% 30%, #ffe6f0, #e0c3fc);
+    background: radial-gradient(circle at 20% 30%, #e0f0ff, #a0b8d0);
     min-height:100vh;
     display:flex; justify-content:center; align-items:center;
     font-family: 'Segoe UI', sans-serif;
@@ -18,160 +18,227 @@
   }
 
   .bokeh {
-    position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none;
-    z-index:0;
+    position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;
   }
   .bokeh span {
-    position:absolute;
-    display:block;
-    background: rgba(255,255,255,0.15);
+    position:absolute; display:block;
+    background: rgba(255,255,255,0.2);
     border-radius:50%;
     animation: float 8s infinite ease-in-out;
   }
   @keyframes float {
-    0%,100% { transform: translateY(0) scale(1); opacity:0.3; }
-    50% { transform: translateY(-40px) scale(1.5); opacity:0; }
+    0%,100% { transform: translateY(0) scale(1); opacity:0.4; }
+    50% { transform: translateY(-50px) scale(1.6); opacity:0; }
   }
 
   .container {
     position:relative; z-index:1;
     display:flex; flex-direction:column; align-items:center;
     gap:20px;
+    margin-top: 40px;
   }
 
+  /* Character breathing + head tilt */
   .character {
-    width:260px; height:320px;
-    position:relative;
+    width: 280px; height: 450px;
+    position: relative;
+    animation: breathe 3.5s ease-in-out infinite, headTilt 7s ease-in-out infinite;
     transform-origin: center bottom;
-    animation: breathe 3s ease-in-out infinite, headTilt 8s ease-in-out infinite;
   }
   @keyframes breathe {
     0%,100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
+    50% { transform: scale(1.018); }
   }
   @keyframes headTilt {
     0%,100% { transform: rotate(0deg); }
-    25% { transform: rotate(1.5deg); }
-    75% { transform: rotate(-1.5deg); }
+    30% { transform: rotate(1.2deg); }
+    70% { transform: rotate(-1.2deg); }
   }
 
+  /* --- Hair Back Layer (long wolf cut) --- */
   .hair-back {
-    position:absolute; bottom:40px; left:50%; transform:translateX(-50%);
-    width:180px; height:180px;
-    background: #f8a5c2;
-    border-radius: 50% 50% 40% 40%;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    z-index:1;
+    position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+    width: 200px; height: 280px;
+    background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 80%);
+    border-radius: 20% 20% 30% 30% / 40% 40% 50% 50%;
+    box-shadow: inset 0 -10px 15px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.3);
+    z-index: 0;
+    overflow: visible;
   }
-  .twintail {
-    position:absolute;
-    width:40px; height:120px;
-    background: #f8a5c2;
+  .hair-back::after {
+    content: '';
+    position: absolute; bottom: -20px; left: 0; width: 100%; height: 60px;
+    background: linear-gradient(180deg, #2a2a2a, transparent);
     border-radius: 50%;
-    z-index:0;
-    transform-origin: top center;
-    animation: hairSway 4s ease-in-out infinite;
   }
-  .twintail.left {
-    left:20px; top:100px;
-    animation-delay: 0s;
+
+  /* Neon cyan streaks in hair */
+  .streak {
+    position: absolute;
+    background: linear-gradient(180deg, #00e5ff, #00b0ff);
+    width: 12px;
+    border-radius: 6px;
+    opacity: 0.8;
+    z-index: 1;
   }
-  .twintail.right {
-    right:20px; top:100px;
-    animation-delay: -2s;
+  .streak1 { top: 30px; left: 30px; height: 140px; transform: rotate(5deg); }
+  .streak2 { top: 50px; right: 25px; height: 120px; transform: rotate(-4deg); }
+  .streak3 { top: 10px; left: 90px; height: 100px; transform: rotate(8deg); }
+
+  /* --- Body (black turtleneck) --- */
+  .body-torso {
+    position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 110px;
+    background: #1a1a1a;
+    border-radius: 20% 20% 30% 30%;
+    z-index: 2;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.3);
   }
-  @keyframes hairSway {
+
+  /* --- Translucent holographic jacket --- */
+  .jacket {
+    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+    width: 160px; height: 140px;
+    background: rgba(200, 230, 255, 0.4);
+    border: 2px solid rgba(255,255,255,0.6);
+    border-radius: 50% 50% 20% 20% / 60% 60% 10% 10%;
+    z-index: 3;
+    backdrop-filter: blur(2px);
+    box-shadow: 0 0 20px rgba(0,200,255,0.3), inset 0 0 20px rgba(255,255,255,0.5);
+  }
+
+  /* --- White cargo joggers --- */
+  .pants {
+    position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%);
+    width: 100px; height: 80px;
+    background: #f5f5f5;
+    border-radius: 10% 10% 20% 20% / 30% 30% 50% 50%;
+    z-index: 1;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  }
+  /* Neon straps dangling */
+  .strap {
+    position: absolute;
+    width: 8px; height: 50px;
+    background: #00e5ff;
+    border-radius: 4px;
+    bottom: -20px;
+    animation: sway 2.5s ease-in-out infinite;
+  }
+  .strap-left { left: 25px; transform-origin: top center; animation-delay: 0s; }
+  .strap-right { right: 25px; transform-origin: top center; animation-delay: -1.2s; }
+  @keyframes sway {
     0%,100% { transform: rotate(0deg); }
-    25% { transform: rotate(5deg); }
-    75% { transform: rotate(-5deg); }
+    25% { transform: rotate(4deg); }
+    75% { transform: rotate(-4deg); }
   }
 
+  /* --- Chunky sneakers --- */
+  .shoes {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 140px; height: 50px;
+    z-index: 4;
+  }
+  .shoe {
+    position: absolute; bottom: 0;
+    width: 60px; height: 40px;
+    background: #ffffff;
+    border-radius: 30% 30% 20% 20% / 50% 50% 30% 30%;
+    box-shadow: 0 -5px 0 #00e5ff, 0 5px 10px rgba(0,0,0,0.3);
+  }
+  .shoe-left { left: 5px; }
+  .shoe-right { right: 5px; }
+
+  /* --- Face --- */
   .face {
-    position:absolute;
-    bottom:60px; left:50%; transform:translateX(-50%);
-    width:150px; height:130px;
-    background: #fff4e6;
-    border-radius: 50% 50% 45% 45%;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-    z-index:2;
+    position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+    width: 110px; height: 100px;
+    background: #ffe4c4;
+    border-radius: 40% 40% 35% 35%;
+    z-index: 5;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
   }
 
+  /* Eyes container */
   .eyes {
-    position:absolute;
-    top:45px; left:50%; transform:translateX(-50%);
-    display:flex; gap:28px;
+    position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 24px;
   }
   .eye {
-    width:36px; height:36px;
+    width: 32px; height: 32px;
     background: #fff;
-    border-radius:50%;
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
-    position:relative;
-    overflow:hidden;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.2);
     transition: transform 0.08s ease;
   }
+  /* Sapphire iris + highlight */
   .eye::before {
-    content:'';
-    position:absolute;
-    width:22px; height:22px;
-    background: radial-gradient(circle at 30% 30%, #9b59b6, #4a235a);
-    border-radius:50%;
-    top:50%; left:50%;
-    transform:translate(-50%,-50%);
+    content: '';
+    position: absolute;
+    width: 22px; height: 22px;
+    background: radial-gradient(circle at 30% 30%, #0d47a1, #003c8f);
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
   }
   .eye::after {
-    content:'';
-    position:absolute;
-    width:6px; height:6px;
-    background:white;
-    border-radius:50%;
-    top:6px; left:8px;
-    box-shadow: 0 0 4px white;
+    content: '';
+    position: absolute;
+    width: 7px; height: 7px;
+    background: white;
+    border-radius: 50%;
+    top: 7px; left: 9px;
+    box-shadow: 0 0 6px white;
   }
-
   .eye.closed {
     transform: scaleY(0.05);
   }
 
-  .cheek {
-    position:absolute; top:70px;
-    width:20px; height:12px;
-    background: rgba(255,140,140,0.5);
-    border-radius:50%;
-    filter: blur(3px);
-    transition: transform 0.3s;
-  }
-  .cheek.left { left:15px; }
-  .cheek.right { right:15px; }
-  .cheek.blush { transform: scale(1.8); background: rgba(255,100,100,0.7); }
-
+  /* Cat-like mouth */
   .mouth {
-    position:absolute;
-    bottom:25px; left:50%; transform:translateX(-50%);
-    width:16px; height:8px;
-    border-bottom: 3px solid #d4869c;
-    border-radius:0 0 50% 50%;
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    width: 16px; height: 8px;
+    border-bottom: 3px solid #c97a8c;
+    border-radius: 0 0 50% 50%;
+    transition: all 0.2s;
   }
   .mouth.smile {
-    width:24px; height:12px;
-    border-bottom-width: 3px;
-    border-radius:0 0 80% 80%;
+    width: 26px; height: 13px;
+    border-bottom-width: 4px;
+    border-radius: 0 0 80% 80%;
   }
 
+  /* Cheeks for blush when smiling */
+  .cheek {
+    position: absolute; top: 55px;
+    width: 18px; height: 10px;
+    background: rgba(255, 140, 140, 0.4);
+    border-radius: 50%;
+    filter: blur(2px);
+    transition: transform 0.3s;
+  }
+  .cheek.left { left: 8px; }
+  .cheek.right { right: 8px; }
+  .cheek.blush { transform: scale(2); background: rgba(255, 90, 90, 0.7); }
+
+  /* Face-lost question mark */
   .question-mark {
     display:none;
-    position:absolute; top:-20px; right:10px;
-    font-size:40px;
-    color:#ff6347;
-    z-index:5;
+    position:absolute; top: -20px; right: 20px;
+    font-size: 44px;
+    color:#ff4444;
+    z-index:10;
     animation: pop 0.6s ease-in-out;
   }
   @keyframes pop {
     0% { transform: scale(0); }
-    80% { transform: scale(1.3); }
+    80% { transform: scale(1.4); }
     100% { transform: scale(1); }
   }
 
+  /* Camera preview */
   .camera-preview {
     position:fixed; bottom:20px; right:20px;
     width:80px; height:100px;
@@ -179,7 +246,7 @@
     border:2px solid white;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     overflow:hidden;
-    z-index:10;
+    z-index:50;
     background:#000;
   }
   .camera-preview video {
@@ -187,6 +254,7 @@
     transform: scaleX(-1);
   }
 
+  /* UI */
   .ui-bar {
     position:fixed; top:10px; left:10px; right:10px;
     display:flex; justify-content:space-between;
@@ -206,7 +274,7 @@
     padding:20px;
   }
   .tutorial button {
-    background: #ff8c94; border:none; padding:12px 30px;
+    background: #00bcd4; border:none; padding:12px 30px;
     border-radius:30px; font-size:18px; color:white;
     cursor:pointer;
   }
@@ -217,22 +285,45 @@
 <div class="bokeh" id="bokeh"></div>
 
 <div class="ui-bar">
-  <div class="name">Mira ✨</div>
+  <div class="name">Diksha ✦</div>
   <div class="settings-icon">⚙️</div>
 </div>
 
 <div class="tutorial" id="tutorial">
-  <h2>Let Mira see you blink!</h2>
-  <p>Allow camera access so she can mimic your blinks.</p>
+  <h2>Let Diksha mirror your blinks!</h2>
+  <p>Allow camera access – she blinks when you blink.</p>
   <button id="startBtn">Start Experience</button>
   <p style="font-size:12px; opacity:0.7;">(Your video stays on your device.)</p>
 </div>
 
 <div class="container">
   <div class="character" id="character">
-    <div class="hair-back"></div>
-    <div class="twintail left"></div>
-    <div class="twintail right"></div>
+    <!-- Hair and streaks -->
+    <div class="hair-back">
+      <div class="streak streak1"></div>
+      <div class="streak streak2"></div>
+      <div class="streak streak3"></div>
+    </div>
+
+    <!-- Jacket (translucent) -->
+    <div class="jacket"></div>
+
+    <!-- Body (turtleneck) -->
+    <div class="body-torso"></div>
+
+    <!-- Pants with straps -->
+    <div class="pants">
+      <div class="strap strap-left"></div>
+      <div class="strap strap-right"></div>
+    </div>
+
+    <!-- Shoes -->
+    <div class="shoes">
+      <div class="shoe shoe-left"></div>
+      <div class="shoe shoe-right"></div>
+    </div>
+
+    <!-- Face -->
     <div class="face">
       <div class="eyes">
         <div class="eye left" id="leftEye"></div>
@@ -242,6 +333,8 @@
       <div class="cheek right" id="rightCheek"></div>
       <div class="mouth" id="mouth"></div>
     </div>
+
+    <!-- Question mark for face lost -->
     <div class="question-mark" id="questionMark">❓</div>
   </div>
 </div>
@@ -262,8 +355,11 @@ const startBtn = document.getElementById('startBtn');
 const tutorial = document.getElementById('tutorial');
 const cameraPreview = document.getElementById('cameraPreview');
 
-// CDN paths for face-api models
+// CDN model path
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
+
+// Disable autonomous blinking (only mirror)
+const AUTONOMOUS_BLINK_ENABLED = false;
 
 let faceDetectionInterval;
 let lastBlinkTime = 0;
@@ -275,6 +371,7 @@ let faceLost = false;
 const EAR_THRESHOLD = 0.25;
 const MAR_THRESHOLD = 0.6;
 
+// Bokeh
 function createBokeh() {
   const bokehContainer = document.getElementById('bokeh');
   for (let i=0; i<15; i++) {
@@ -290,21 +387,20 @@ function createBokeh() {
 }
 createBokeh();
 
+// Blink control
 function blinkEyes(closeDuration = 150) {
-  const eyes = [leftEyeEl, rightEyeEl];
-  eyes.forEach(eye => eye.classList.add('closed'));
+  [leftEyeEl, rightEyeEl].forEach(eye => eye.classList.add('closed'));
   setTimeout(() => {
-    eyes.forEach(eye => eye.classList.remove('closed'));
+    [leftEyeEl, rightEyeEl].forEach(eye => eye.classList.remove('closed'));
   }, closeDuration);
 }
 
 function scheduleAutoBlink() {
   clearTimeout(autoBlinkTimeout);
+  if (!AUTONOMOUS_BLINK_ENABLED) return;
   const delay = 3000 + Math.random() * 1500;
   autoBlinkTimeout = setTimeout(() => {
-    if (!isUserBlinking) {
-      blinkEyes(150);
-    }
+    if (!isUserBlinking) blinkEyes(150);
     scheduleAutoBlink();
   }, delay);
 }
@@ -331,6 +427,7 @@ function setFaceLost(lost) {
   }
 }
 
+// EAR / MAR
 function eyeAspectRatio(eye) {
   const A = distance(eye[1], eye[5]);
   const B = distance(eye[2], eye[4]);
@@ -340,59 +437,40 @@ function eyeAspectRatio(eye) {
 function distance(pt1, pt2) {
   return Math.sqrt(Math.pow(pt1.x - pt2.x, 2) + Math.pow(pt1.y - pt2.y, 2));
 }
-
 function mouthAspectRatio(mouth) {
-  const leftCorner = mouth[0];
-  const rightCorner = mouth[6];
-  const topLip = mouth[3];
-  const bottomLip = mouth[9];
-  const width = distance(leftCorner, rightCorner);
-  const height = distance(topLip, bottomLip);
-  return height / width;
+  return distance(mouth[3], mouth[9]) / distance(mouth[0], mouth[6]);
 }
 
+// Detection loop
 async function onFaceDetected() {
-  if (!video.paused && !video.ended) {
-    const detections = await faceapi.detectSingleFace(video,
-      new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }))
-      .withFaceLandmarks();
+  if (video.paused || video.ended) return;
+  const detections = await faceapi.detectSingleFace(video,
+    new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }))
+    .withFaceLandmarks();
 
-    if (detections && detections.landmarks) {
-      if (faceLost) {
-        setFaceLost(false);
-        clearTimeout(faceLostTimer);
-      }
+  if (detections && detections.landmarks) {
+    if (faceLost) { setFaceLost(false); clearTimeout(faceLostTimer); }
+    const l = detections.landmarks;
+    const earL = eyeAspectRatio(l.getLeftEye());
+    const earR = eyeAspectRatio(l.getRightEye());
+    const avgEAR = (earL + earR) / 2;
 
-      const landmarks = detections.landmarks;
-      const leftEye = landmarks.getLeftEye();
-      const rightEye = landmarks.getRightEye();
-      const mouthPoints = landmarks.getMouth();
-
-      const earLeft = eyeAspectRatio(leftEye);
-      const earRight = eyeAspectRatio(rightEye);
-      const avgEAR = (earLeft + earRight) / 2;
-
-      const now = Date.now();
-      if (avgEAR < EAR_THRESHOLD && !isUserBlinking && (now - lastBlinkTime) > 300) {
-        isUserBlinking = true;
-        lastBlinkTime = now;
-        blinkEyes(150);
-        setTimeout(() => { isUserBlinking = false; }, 300);
-      }
-
-      const mar = mouthAspectRatio(mouthPoints);
-      setSmileState(mar > MAR_THRESHOLD);
-
-      clearTimeout(faceLostTimer);
-      faceLostTimer = setTimeout(() => {
-        setFaceLost(true);
-      }, 2000);
-    } else {
-      clearTimeout(faceLostTimer);
-      faceLostTimer = setTimeout(() => {
-        setFaceLost(true);
-      }, 2000);
+    const now = Date.now();
+    if (avgEAR < EAR_THRESHOLD && !isUserBlinking && (now - lastBlinkTime) > 300) {
+      isUserBlinking = true;
+      lastBlinkTime = now;
+      blinkEyes(150);
+      setTimeout(() => isUserBlinking = false, 300);
     }
+
+    const mar = mouthAspectRatio(l.getMouth());
+    setSmileState(mar > MAR_THRESHOLD);
+
+    clearTimeout(faceLostTimer);
+    faceLostTimer = setTimeout(() => setFaceLost(true), 2000);
+  } else {
+    clearTimeout(faceLostTimer);
+    faceLostTimer = setTimeout(() => setFaceLost(true), 2000);
   }
 }
 
@@ -403,18 +481,15 @@ async function startCamera() {
     });
     video.srcObject = stream;
     video.play();
-
     cameraPreview.style.display = 'block';
 
-    // Load models from CDN (no local files needed)
     await faceapi.nets.tinyFaceDetector.load(MODEL_URL);
     await faceapi.nets.faceLandmark68Net.load(MODEL_URL);
 
     faceDetectionInterval = setInterval(onFaceDetected, 120);
     scheduleAutoBlink();
-
     tutorial.style.display = 'none';
-    localStorage.setItem('miraTutorialShown', 'true');
+    localStorage.setItem('dikshaTutorialShown', 'true');
   } catch (err) {
     alert('Camera access denied or not available. Please allow camera permissions.');
     console.error(err);
@@ -422,23 +497,20 @@ async function startCamera() {
 }
 
 window.addEventListener('load', () => {
-  if (localStorage.getItem('miraTutorialShown') === 'true') {
+  if (localStorage.getItem('dikshaTutorialShown') === 'true') {
     tutorial.style.display = 'none';
     startCamera();
   } else {
     tutorial.style.display = 'flex';
   }
 });
-
 startBtn.addEventListener('click', startCamera);
 
 window.addEventListener('beforeunload', () => {
   clearInterval(faceDetectionInterval);
   clearTimeout(faceLostTimer);
   clearTimeout(autoBlinkTimeout);
-  if (video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
-  }
+  if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
 });
 </script>
 </body>
