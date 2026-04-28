@@ -1,222 +1,1056 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Live2D Blink Mirror ✨</title>
-<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/index.min.js"></script>
-<script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    background: radial-gradient(ellipse at 30% 30%, #1a1a2e, #0f0f1a);
-    display: flex; justify-content: center; align-items: center;
-    height: 100vh; width: 100vw;
-    overflow: hidden;
-    font-family: 'Segoe UI', sans-serif;
-    user-select: none;
-  }
-  #canvas-container {
-    width: 100vw; height: 100vh;
-    display: flex; justify-content: center; align-items: center;
-  }
-  .camera-preview {
-    position: fixed; bottom: 20px; right: 20px;
-    width: 80px; height: 100px;
-    border-radius: 16px;
-    border: 2px solid rgba(255,255,255,0.8);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.8);
-    overflow: hidden;
-    z-index: 50;
-    background: #000;
-    display: none;
-  }
-  .camera-preview video {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    transform: scaleX(-1);
-  }
-  .ui-bar {
-    position: fixed; top: 10px; left: 10px; right: 10px;
-    display: flex; justify-content: space-between;
-    align-items: center;
-    z-index: 50;
-    color: white; text-shadow: 0 2px 5px black;
-    font-size: 22px; font-weight: bold;
-  }
-  .tutorial {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85);
-    z-index: 100;
-    display: flex; justify-content: center; align-items: center;
-    flex-direction: column; gap: 25px;
-    color: white; text-align: center;
-    padding: 30px;
-  }
-  .tutorial h2 { font-size: 28px; }
-  .tutorial button {
-    background: #ff4d6d; border: none;
-    padding: 14px 36px; border-radius: 40px;
-    font-size: 20px; color: white; cursor: pointer;
-    box-shadow: 0 0 20px #ff4d6d;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Rin Nohara - Interactive Mirror 🌸</title>
+    <style>
+        /* ========================================
+           GLOBAL RESET & VARIABLES
+        ======================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #ff6b9d;
+            --secondary-color: #c44569;
+            --bg-dark: #1a1a2e;
+            --bg-darker: #16213e;
+            --text-light: #f5f5f5;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            color: var(--text-light);
+        }
+
+        /* ========================================
+           ANIMATED GRADIENT BACKGROUND
+        ======================================== */
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
+            z-index: -2;
+        }
+
+        /* Floating bokeh circles */
+        .bokeh {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bokeh-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float-bokeh 20s infinite ease-in-out;
+        }
+
+        @keyframes float-bokeh {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+            50% { transform: translate(50px, -50px) scale(1.2); opacity: 0.6; }
+        }
+
+        /* ========================================
+           TOP BAR
+        ======================================== */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .top-bar-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            text-shadow: 0 2px 10px rgba(255, 107, 157, 0.5);
+        }
+
+        .top-bar-settings {
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .top-bar-settings:hover {
+            transform: rotate(90deg);
+        }
+
+        /* ========================================
+           CHARACTER CONTAINER (Dual-Image Crossfade)
+        ======================================== */
+        .character-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90vw;
+            max-width: 500px;
+            height: 70vh;
+            max-height: 700px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .character-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.3s ease, opacity 0.25s ease;
+        }
+
+        /* Dual-image system for smooth crossfades */
+        .character-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: opacity 0.25s ease;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .character-image.current {
+            opacity: 1;
+            z-index: 2;
+        }
+
+        .character-image.next {
+            opacity: 0;
+            z-index: 1;
+        }
+
+        /* ========================================
+           CAMERA PREVIEW
+        ======================================== */
+        .camera-preview {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 80px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 20px rgba(255, 107, 157, 0.5);
+            z-index: 50;
+            display: none;
+            transform: scaleX(-1); /* Mirror the preview */
+        }
+
+        .camera-preview.active {
+            display: block;
+        }
+
+        .camera-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* ========================================
+           TUTORIAL OVERLAY
+        ======================================== */
+        .tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .tutorial-overlay.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .tutorial-content {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .tutorial-content h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .tutorial-content p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .tutorial-btn {
+            background: white;
+            color: var(--primary-color);
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .tutorial-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.3);
+        }
+
+        /* ========================================
+           EMOJI PARTICLES
+        ======================================== */
+        .particles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .particle {
+            position: absolute;
+            font-size: 1.5rem;
+            animation: float-particle 2s ease-out forwards;
+        }
+
+        @keyframes float-particle {
+            0% {
+                transform: translate(0, 0) scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* ========================================
+           MOBILE OPTIMIZATIONS
+        ======================================== */
+        @media (max-width: 768px) {
+            .top-bar-title {
+                font-size: 1.1rem;
+            }
+
+            .camera-preview {
+                width: 80px;
+                height: 60px;
+                bottom: 15px;
+                right: 15px;
+            }
+
+            .character-container {
+                max-width: 400px;
+            }
+
+            .tutorial-content {
+                padding: 30px 20px;
+            }
+
+            .tutorial-content h2 {
+                font-size: 1.5rem;
+            }
+
+            .tutorial-content p {
+                font-size: 1rem;
+            }
+        }
+
+        /* ========================================
+           LOADING INDICATOR
+        ======================================== */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            z-index: 999;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
 </head>
 <body>
-<div class="ui-bar">
-  <span>Live2D Blink ✨</span>
-  <span>⚙️</span>
-</div>
+    <!-- Background -->
+    <div class="background"></div>
+    <div class="bokeh" id="bokeh"></div>
 
-<div class="tutorial" id="tutorial">
-  <h2>Blink – and she blinks with you!</h2>
-  <p>Allow camera access to start the mirroring.</p>
-  <button id="startBtn">✨ Start</button>
-  <p style="font-size:13px; opacity:0.7;">(Your video never leaves your device.)</p>
-</div>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="top-bar-title">Rin 🌸</div>
+        <div class="top-bar-settings">⚙️</div>
+    </div>
 
-<div id="canvas-container"></div>
+    <!-- Character Container with Dual-Image System -->
+    <div class="character-container">
+        <div class="character-wrapper" id="characterWrapper">
+            <img src="images/idle.png" class="character-image current" id="currentImage" alt="Rin">
+            <img src="images/idle.png" class="character-image next" id="nextImage" alt="Rin">
+        </div>
+    </div>
 
-<div class="camera-preview" id="cameraPreview">
-  <video id="video" playsinline autoplay muted></video>
-</div>
+    <!-- Camera Preview -->
+    <div class="camera-preview" id="cameraPreview">
+        <video id="video" autoplay playsinline></video>
+    </div>
 
-<script>
-// ---------- DOM ----------
-const video = document.getElementById('video');
-const startBtn = document.getElementById('startBtn');
-const tutorial = document.getElementById('tutorial');
-const cameraPreview = document.getElementById('cameraPreview');
-const container = document.getElementById('canvas-container');
+    <!-- Tutorial Overlay -->
+    <div class="tutorial-overlay" id="tutorialOverlay">
+        <div class="tutorial-content">
+            <h2>Welcome! 🌸</h2>
+            <p>Let Rin mirror your expressions!<br>
+            Try blinking, smiling, winking, and tilting your head.<br>
+            She'll react to everything you do! 💕</p>
+            <button class="tutorial-btn" id="startBtn">Start Experience</button>
+        </div>
+    </div>
 
-// ---------- face-api model path ----------
-const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
+    <!-- Emoji Particles -->
+    <div class="particles-container" id="particlesContainer"></div>
 
-// ---------- Live2D model URL (Haru, free sample) ----------
-const LIVE2D_MODEL_URL = 'https://cdn.jsdelivr.net/gh/Live2D/CubismWebSamples@main/Samples/Resources/Haru/Haru.model3.json';
+    <!-- Loading Indicator -->
+    <div class="loading" id="loading" style="display: none;">Loading models</div>
 
-// ---------- Blink detection variables ----------
-let faceDetectionInterval;
-let lastBlinkTime = 0;
-let userBlinking = false;
-let currentEyeValue = 1.0;  // target eye open (1 = fully open)
+    <!-- Face API -->
+    <script src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
-// ---------- Pixi application & model ----------
-let app;
-let live2dModel;
+    <script>
+        /* ========================================
+           GLOBAL STATE & CONFIGURATION
+        ======================================== */
+        const CONFIG = {
+            // Detection thresholds
+            EAR_BLINK_THRESHOLD: 0.22,
+            EAR_OPEN_THRESHOLD: 0.30,
+            MAR_SMILE_THRESHOLD: 0.6,
+            MAR_SURPRISE_THRESHOLD: 0.75,
+            HEAD_TILT_THRESHOLD: 12,
+            HEAD_TILT_RETURN: 8,
+            
+            // Timing (milliseconds)
+            DETECTION_INTERVAL: 150,
+            BLINK_DURATION: 120,
+            BLINK_COOLDOWN: 400,
+            WINK_DURATION: 700,
+            SMILE_HOLD_TIME: 600,
+            SMILE_RETURN_DELAY: 1000,
+            SURPRISE_HOLD_TIME: 400,
+            SURPRISE_RETURN_DELAY: 800,
+            SHY_DURATION: 2000,
+            FACE_LOST_DELAY: 2000,
+            IDLE_FIDGET_MIN: 8000,
+            IDLE_FIDGET_MAX: 12000,
+            AUTO_BLINK_MIN: 2500,
+            AUTO_BLINK_MAX: 4000,
+            
+            // Face size for shy detection
+            FACE_SIZE_THRESHOLD: 1.3
+        };
 
-// ---------- Set up PixiJS and load the model ----------
-async function initLive2D() {
-  app = new PIXI.Application({
-    resizeTo: container,
-    backgroundAlpha: 0,
-    antialias: true,
-    resolution: window.devicePixelRatio || 1,
-    autoDensity: true,
-  });
-  container.appendChild(app.view);
+        const STATE = {
+            currentEmotion: 'idle',
+            isTransitioning: false,
+            lastBlinkTime: 0,
+            lastWinkTime: 0,
+            lastSmileTime: 0,
+            lastSurpriseTime: 0,
+            lastShyTime: 0,
+            lastFaceSeenTime: Date.now(),
+            faceWasLost: false,
+            lastAutoBlinkTime: 0,
+            faceAreaHistory: [],
+            consecutiveBlinkFrames: 0,
+            consecutiveLeftWinkFrames: 0,
+            consecutiveRightWinkFrames: 0,
+            smileHoldStart: 0,
+            surpriseHoldStart: 0,
+            headTilt: 0,
+            currentTransform: {
+                rotate: 0,
+                scale: 1,
+                translateX: 0,
+                translateY: 0,
+                scaleX: 1
+            }
+        };
 
-  // Load model
-  live2dModel = await PIXI.live2d.Live2DModel.from(LIVE2D_MODEL_URL, { autoInteract: false });
-  live2dModel.anchor.set(0.5, 0.5);
-  live2dModel.scale.set(0.2);  // scale down to fit
-  live2dModel.position.set(app.screen.width / 2, app.screen.height / 2);
+        /* ========================================
+           DOM ELEMENTS
+        ======================================== */
+        const elements = {
+            video: document.getElementById('video'),
+            cameraPreview: document.getElementById('cameraPreview'),
+            currentImage: document.getElementById('currentImage'),
+            nextImage: document.getElementById('nextImage'),
+            characterWrapper: document.getElementById('characterWrapper'),
+            tutorialOverlay: document.getElementById('tutorialOverlay'),
+            startBtn: document.getElementById('startBtn'),
+            particlesContainer: document.getElementById('particlesContainer'),
+            loading: document.getElementById('loading'),
+            bokeh: document.getElementById('bokeh')
+        };
 
-  app.stage.addChild(live2dModel);
+        /* ========================================
+           BOKEH BACKGROUND INITIALIZATION
+        ======================================== */
+        function initBokeh() {
+            for (let i = 0; i < 20; i++) {
+                const circle = document.createElement('div');
+                circle.className = 'bokeh-circle';
+                const size = Math.random() * 100 + 50;
+                circle.style.width = size + 'px';
+                circle.style.height = size + 'px';
+                circle.style.left = Math.random() * 100 + '%';
+                circle.style.top = Math.random() * 100 + '%';
+                circle.style.animationDelay = Math.random() * 20 + 's';
+                circle.style.animationDuration = (Math.random() * 10 + 15) + 's';
+                elements.bokeh.appendChild(circle);
+            }
+        }
 
-  // Important: we need to update the eye parameters every frame
-  // based on the currentEyeValue (which is driven by blink detection).
-  app.ticker.add(() => {
-    if (live2dModel) {
-      // Slowly interpolate toward currentEyeValue for smooth transitions
-      const currentL = live2dModel.internalModel.coreModel.getParameterValueById('ParamEyeLOpen');
-      const currentR = live2dModel.internalModel.coreModel.getParameterValueById('ParamEyeROpen');
-      const speed = 0.3;  // how quickly eyes follow the target value
-      const newL = currentL + (currentEyeValue - currentL) * speed;
-      const newR = currentR + (currentEyeValue - currentR) * speed;
-      live2dModel.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', newL);
-      live2dModel.internalModel.coreModel.setParameterValueById('ParamEyeROpen', newR);
-    }
-  });
-}
+        /* ========================================
+           DUAL-IMAGE CROSSFADE SYSTEM
+        ======================================== */
+        async function crossfadeToExpression(imageName, mirrorHorizontal = false) {
+            if (STATE.isTransitioning) return;
+            
+            const imagePath = `images/${imageName}.png`;
+            const currentEmotion = imageName.replace('.png', '');
+            
+            // Don't crossfade if already showing this expression (unless transform changes)
+            if (STATE.currentEmotion === currentEmotion && 
+                STATE.currentTransform.scaleX === (mirrorHorizontal ? -1 : 1)) {
+                return;
+            }
+            
+            STATE.isTransitioning = true;
+            STATE.currentEmotion = currentEmotion;
+            
+            // Preload next image
+            elements.nextImage.src = imagePath;
+            await new Promise(resolve => {
+                if (elements.nextImage.complete) {
+                    resolve();
+                } else {
+                    elements.nextImage.onload = resolve;
+                    elements.nextImage.onerror = resolve;
+                }
+            });
+            
+            // Apply horizontal mirror if needed
+            STATE.currentTransform.scaleX = mirrorHorizontal ? -1 : 1;
+            applyTransform();
+            
+            // Start crossfade
+            elements.nextImage.style.opacity = '1';
+            elements.currentImage.style.opacity = '0';
+            
+            // Wait for transition
+            await new Promise(resolve => setTimeout(resolve, 250));
+            
+            // Swap roles
+            const temp = elements.currentImage;
+            elements.currentImage = elements.nextImage;
+            elements.nextImage = temp;
+            
+            elements.currentImage.classList.remove('next');
+            elements.currentImage.classList.add('current');
+            elements.nextImage.classList.remove('current');
+            elements.nextImage.classList.add('next');
+            
+            elements.nextImage.style.opacity = '0';
+            
+            STATE.isTransitioning = false;
+        }
 
-// ---------- Blink mirror logic (face-api) ----------
-async function onFaceDetected() {
-  if (video.paused || video.ended) return;
-  const detection = await faceapi.detectSingleFace(
-    video,
-    new faceapi.TinyFaceDetectorOptions({ inputSize: 160 })
-  ).withFaceLandmarks();
+        /* ========================================
+           TRANSFORM APPLICATION
+        ======================================== */
+        function applyTransform() {
+            const t = STATE.currentTransform;
+            elements.characterWrapper.style.transform = 
+                `rotate(${t.rotate}deg) scale(${t.scale}) scaleX(${t.scaleX}) translate(${t.translateX}px, ${t.translateY}px)`;
+        }
 
-  if (detection && detection.landmarks) {
-    const leftEye = detection.landmarks.getLeftEye();
-    const rightEye = detection.landmarks.getRightEye();
-    const EAR = (eyeAspectRatio(leftEye) + eyeAspectRatio(rightEye)) / 2;
+        function updateTransform(updates) {
+            Object.assign(STATE.currentTransform, updates);
+            applyTransform();
+        }
 
-    const now = Date.now();
-    if (EAR < 0.25 && !userBlinking && (now - lastBlinkTime) > 300) {
-      // User blinked
-      userBlinking = true;
-      lastBlinkTime = now;
-      currentEyeValue = 0.0;         // close model's eyes
-      setTimeout(() => {
-        currentEyeValue = 1.0;       // open back
-        userBlinking = false;
-      }, 150);
-    }
-  }
-}
+        function resetTransform(duration = 300) {
+            STATE.currentTransform = {
+                rotate: 0,
+                scale: 1,
+                translateX: 0,
+                translateY: 0,
+                scaleX: STATE.currentTransform.scaleX // Keep mirror state
+            };
+            applyTransform();
+        }
 
-function eyeAspectRatio(eye) {
-  const A = Math.hypot(eye[1].x - eye[5].x, eye[1].y - eye[5].y);
-  const B = Math.hypot(eye[2].x - eye[4].x, eye[2].y - eye[4].y);
-  const C = Math.hypot(eye[0].x - eye[3].x, eye[0].y - eye[3].y);
-  return (A + B) / (2.0 * C);
-}
+        /* ========================================
+           PARTICLE EFFECTS
+        ======================================== */
+        function spawnParticle(emoji, x, y, velocityX, velocityY) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.textContent = emoji;
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            particle.style.setProperty('--tx', velocityX + 'px');
+            particle.style.setProperty('--ty', velocityY + 'px');
+            elements.particlesContainer.appendChild(particle);
+            
+            setTimeout(() => particle.remove(), 2000);
+        }
 
-// ---------- Start camera and detection ----------
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 240 } }
-    });
-    video.srcObject = stream;
-    await video.play();
-    cameraPreview.style.display = 'block';
+        function spawnHeartsAround(count = 8) {
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count;
+                const distance = 100 + Math.random() * 50;
+                const vx = Math.cos(angle) * distance;
+                const vy = Math.sin(angle) * distance - 100; // Float upward
+                spawnParticle('❤️', centerX, centerY, vx, vy);
+            }
+        }
 
-    await faceapi.nets.tinyFaceDetector.load(MODEL_URL);
-    await faceapi.nets.faceLandmark68Net.load(MODEL_URL);
+        function spawnSingleHeart() {
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const angle = Math.random() * Math.PI * 2;
+            const vx = Math.cos(angle) * 80;
+            const vy = Math.sin(angle) * 80 - 100;
+            spawnParticle('💕', centerX, centerY, vx, vy);
+        }
 
-    faceDetectionInterval = setInterval(onFaceDetected, 120);
-    tutorial.style.display = 'none';
-    localStorage.setItem('live2dTutorial', '1');
-  } catch (err) {
-    alert('Camera access denied. Please allow camera permission.');
-    console.error(err);
-  }
-}
+        function spawnPartyEffect() {
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const emojis = ['❤️', '🎉', '🌟', '✨', '💖'];
+            
+            for (let i = 0; i < 15; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 100 + Math.random() * 100;
+                const vx = Math.cos(angle) * distance;
+                const vy = Math.sin(angle) * distance - 150;
+                const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                setTimeout(() => spawnParticle(emoji, centerX, centerY, vx, vy), i * 50);
+            }
+        }
 
-// ---------- Initialization ----------
-window.addEventListener('load', async () => {
-  await initLive2D();
-  if (localStorage.getItem('live2dTutorial') === '1') {
-    tutorial.style.display = 'none';
-    startCamera();
-  } else {
-    tutorial.style.display = 'flex';
-  }
-});
+        /* ========================================
+           FACIAL LANDMARK CALCULATIONS
+        ======================================== */
+        function calculateEAR(eye) {
+            const A = Math.hypot(eye[1].x - eye[5].x, eye[1].y - eye[5].y);
+            const B = Math.hypot(eye[2].x - eye[4].x, eye[2].y - eye[4].y);
+            const C = Math.hypot(eye[0].x - eye[3].x, eye[0].y - eye[3].y);
+            return (A + B) / (2.0 * C);
+        }
 
-startBtn.addEventListener('click', startCamera);
+        function calculateMAR(mouth) {
+            const A = Math.hypot(mouth[2].x - mouth[10].x, mouth[2].y - mouth[10].y);
+            const B = Math.hypot(mouth[4].x - mouth[8].x, mouth[4].y - mouth[8].y);
+            const C = Math.hypot(mouth[0].x - mouth[6].x, mouth[0].y - mouth[6].y);
+            return (A + B) / (2.0 * C);
+        }
 
-window.addEventListener('beforeunload', () => {
-  clearInterval(faceDetectionInterval);
-  if (video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
-  }
-  if (app) app.destroy(true);
-});
-</script>
+        function calculateHeadTilt(landmarks) {
+            const leftEye = landmarks.getLeftEye();
+            const rightEye = landmarks.getRightEye();
+            const leftEyeCenter = leftEye[0];
+            const rightEyeCenter = rightEye[0];
+            const angle = Math.atan2(
+                rightEyeCenter.y - leftEyeCenter.y,
+                rightEyeCenter.x - leftEyeCenter.x
+            ) * 180 / Math.PI;
+            return angle;
+        }
+
+        /* ========================================
+           EXPRESSION HANDLERS
+        ======================================== */
+        async function handleBlink() {
+            const now = Date.now();
+            if (now - STATE.lastBlinkTime < CONFIG.BLINK_COOLDOWN) return;
+            
+            STATE.lastBlinkTime = now;
+            await crossfadeToExpression('eyes-closed');
+            await new Promise(resolve => setTimeout(resolve, CONFIG.BLINK_DURATION));
+            await crossfadeToExpression('idle');
+        }
+
+        async function handleLeftWink() {
+            const now = Date.now();
+            if (now - STATE.lastWinkTime < 1000) return;
+            
+            STATE.lastWinkTime = now;
+            await crossfadeToExpression('wink-left');
+            spawnSingleHeart();
+            await new Promise(resolve => setTimeout(resolve, CONFIG.WINK_DURATION));
+            await crossfadeToExpression('idle');
+        }
+
+        async function handleRightWink() {
+            const now = Date.now();
+            if (now - STATE.lastWinkTime < 1000) return;
+            
+            STATE.lastWinkTime = now;
+            // Mirror the wink-left image horizontally
+            await crossfadeToExpression('wink-left', true);
+            spawnSingleHeart();
+            await new Promise(resolve => setTimeout(resolve, CONFIG.WINK_DURATION));
+            await crossfadeToExpression('idle');
+        }
+
+        async function handleSmile() {
+            const now = Date.now();
+            if (STATE.currentEmotion === 'happy') return;
+            
+            STATE.lastSmileTime = now;
+            await crossfadeToExpression('happy');
+            spawnHeartsAround(8);
+            
+            // Joyful bounce
+            updateTransform({ scale: 1.04 });
+            await new Promise(resolve => setTimeout(resolve, 200));
+            updateTransform({ scale: 1.0 });
+        }
+
+        async function handleSurprise() {
+            if (STATE.currentEmotion === 'surprised') return;
+            
+            await crossfadeToExpression('surprised');
+            
+            // Pop effect
+            updateTransform({ scale: 1.08 });
+            await new Promise(resolve => setTimeout(resolve, 100));
+            updateTransform({ scale: 1.0 });
+        }
+
+        async function handleShy() {
+            const now = Date.now();
+            if (now - STATE.lastShyTime < CONFIG.SHY_DURATION) return;
+            
+            STATE.lastShyTime = now;
+            await crossfadeToExpression('shy');
+            updateTransform({ translateY: 25, scale: 0.92 });
+            
+            await new Promise(resolve => setTimeout(resolve, CONFIG.SHY_DURATION));
+            await crossfadeToExpression('idle');
+            resetTransform();
+        }
+
+        async function handleFaceLost() {
+            if (STATE.faceWasLost) return;
+            STATE.faceWasLost = true;
+            
+            await crossfadeToExpression('sad');
+            // Could add a question mark overlay here if desired
+        }
+
+        async function handleFaceFound() {
+            if (!STATE.faceWasLost) return;
+            STATE.faceWasLost = false;
+            
+            await crossfadeToExpression('happy');
+            spawnPartyEffect();
+            
+            // Bounce animation
+            updateTransform({ scale: 1.1 });
+            await new Promise(resolve => setTimeout(resolve, 300));
+            updateTransform({ scale: 1.0 });
+            await new Promise(resolve => setTimeout(resolve, 700));
+            await crossfadeToExpression('idle');
+        }
+
+        function handleHeadTilt(tilt) {
+            if (Math.abs(tilt) > CONFIG.HEAD_TILT_THRESHOLD) {
+                const targetRotation = tilt > 0 ? 6 : -6;
+                updateTransform({ rotate: targetRotation, scale: 1.02 });
+            } else if (Math.abs(tilt) < CONFIG.HEAD_TILT_RETURN) {
+                updateTransform({ rotate: 0, scale: 1.0 });
+            }
+        }
+
+        /* ========================================
+           IDLE BEHAVIORS
+        ======================================== */
+        async function performIdleFidget() {
+            if (STATE.currentEmotion !== 'idle' || STATE.isTransitioning) return;
+            
+            const fidgets = [
+                async () => {
+                    // Body bounce
+                    updateTransform({ translateY: -8 });
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                    updateTransform({ translateY: 0 });
+                },
+                async () => {
+                    // Head tilt sequence
+                    updateTransform({ rotate: -4 });
+                    await new Promise(resolve => setTimeout(resolve, 600));
+                    updateTransform({ rotate: 4 });
+                    await new Promise(resolve => setTimeout(resolve, 600));
+                    updateTransform({ rotate: 0 });
+                },
+                async () => {
+                    // Brief happy flash
+                    await crossfadeToExpression('happy');
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                    await crossfadeToExpression('idle');
+                }
+            ];
+            
+            const randomFidget = fidgets[Math.floor(Math.random() * fidgets.length)];
+            await randomFidget();
+        }
+
+        function scheduleIdleFidget() {
+            const delay = CONFIG.IDLE_FIDGET_MIN + 
+                         Math.random() * (CONFIG.IDLE_FIDGET_MAX - CONFIG.IDLE_FIDGET_MIN);
+            setTimeout(async () => {
+                await performIdleFidget();
+                scheduleIdleFidget();
+            }, delay);
+        }
+
+        async function performAutoBlink() {
+            const now = Date.now();
+            if (now - STATE.lastAutoBlinkTime < 1500) return;
+            if (STATE.currentEmotion !== 'idle' || STATE.isTransitioning) return;
+            
+            STATE.lastAutoBlinkTime = now;
+            await crossfadeToExpression('eyes-closed');
+            await new Promise(resolve => setTimeout(resolve, CONFIG.BLINK_DURATION));
+            await crossfadeToExpression('idle');
+        }
+
+        function scheduleAutoBlink() {
+            const delay = CONFIG.AUTO_BLINK_MIN + 
+                         Math.random() * (CONFIG.AUTO_BLINK_MAX - CONFIG.AUTO_BLINK_MIN);
+            setTimeout(async () => {
+                await performAutoBlink();
+                scheduleAutoBlink();
+            }, delay);
+        }
+
+        /* ========================================
+           FACE DETECTION LOOP
+        ======================================== */
+        let detectionInterval;
+
+        async function detectFace() {
+            const detections = await faceapi
+                .detectSingleFace(elements.video, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks();
+
+            const now = Date.now();
+
+            if (!detections) {
+                // No face detected
+                if (now - STATE.lastFaceSeenTime > CONFIG.FACE_LOST_DELAY) {
+                    await handleFaceLost();
+                }
+                
+                // Reset consecutive counters
+                STATE.consecutiveBlinkFrames = 0;
+                STATE.consecutiveLeftWinkFrames = 0;
+                STATE.consecutiveRightWinkFrames = 0;
+                STATE.smileHoldStart = 0;
+                STATE.surpriseHoldStart = 0;
+                return;
+            }
+
+            // Face detected
+            STATE.lastFaceSeenTime = now;
+            if (STATE.faceWasLost) {
+                await handleFaceFound();
+            }
+
+            const landmarks = detections.landmarks;
+            const leftEye = landmarks.getLeftEye();
+            const rightEye = landmarks.getRightEye();
+            const mouth = landmarks.getMouth();
+
+            // Calculate metrics
+            const leftEAR = calculateEAR(leftEye);
+            const rightEAR = calculateEAR(rightEye);
+            const avgEAR = (leftEAR + rightEAR) / 2;
+            const MAR = calculateMAR(mouth);
+            const headTilt = calculateHeadTilt(landmarks);
+
+            // Face area for shy detection
+            const box = detections.detection.box;
+            const faceArea = box.width * box.height;
+            STATE.faceAreaHistory.push(faceArea);
+            if (STATE.faceAreaHistory.length > 13) { // ~2 seconds at 150ms intervals
+                STATE.faceAreaHistory.shift();
+            }
+
+            // ==================== BLINK DETECTION ====================
+            if (avgEAR < CONFIG.EAR_BLINK_THRESHOLD && 
+                leftEAR < CONFIG.EAR_BLINK_THRESHOLD && 
+                rightEAR < CONFIG.EAR_BLINK_THRESHOLD) {
+                STATE.consecutiveBlinkFrames++;
+                if (STATE.consecutiveBlinkFrames >= 2) { // ~300ms
+                    await handleBlink();
+                    STATE.consecutiveBlinkFrames = 0;
+                }
+            } else {
+                STATE.consecutiveBlinkFrames = 0;
+            }
+
+            // ==================== WINK DETECTION ====================
+            // Left wink (left eye closed, right eye open)
+            if (leftEAR < CONFIG.EAR_BLINK_THRESHOLD && rightEAR > CONFIG.EAR_OPEN_THRESHOLD) {
+                STATE.consecutiveLeftWinkFrames++;
+                STATE.consecutiveRightWinkFrames = 0;
+                if (STATE.consecutiveLeftWinkFrames >= 3) { // ~450ms
+                    await handleLeftWink();
+                    STATE.consecutiveLeftWinkFrames = 0;
+                }
+            }
+            // Right wink (right eye closed, left eye open)
+            else if (rightEAR < CONFIG.EAR_BLINK_THRESHOLD && leftEAR > CONFIG.EAR_OPEN_THRESHOLD) {
+                STATE.consecutiveRightWinkFrames++;
+                STATE.consecutiveLeftWinkFrames = 0;
+                if (STATE.consecutiveRightWinkFrames >= 3) { // ~450ms
+                    await handleRightWink();
+                    STATE.consecutiveRightWinkFrames = 0;
+                }
+            } else {
+                STATE.consecutiveLeftWinkFrames = 0;
+                STATE.consecutiveRightWinkFrames = 0;
+            }
+
+            // ==================== SMILE DETECTION ====================
+            if (MAR > CONFIG.MAR_SMILE_THRESHOLD) {
+                if (!STATE.smileHoldStart) {
+                    STATE.smileHoldStart = now;
+                } else if (now - STATE.smileHoldStart > CONFIG.SMILE_HOLD_TIME) {
+                    await handleSmile();
+                }
+            } else {
+                if (STATE.currentEmotion === 'happy' && MAR < 0.5) {
+                    if (now - STATE.lastSmileTime > CONFIG.SMILE_RETURN_DELAY) {
+                        await crossfadeToExpression('idle');
+                    }
+                }
+                STATE.smileHoldStart = 0;
+            }
+
+            // ==================== SURPRISE DETECTION ====================
+            if (MAR > CONFIG.MAR_SURPRISE_THRESHOLD) {
+                if (!STATE.surpriseHoldStart) {
+                    STATE.surpriseHoldStart = now;
+                } else if (now - STATE.surpriseHoldStart > CONFIG.SURPRISE_HOLD_TIME) {
+                    await handleSurprise();
+                }
+            } else {
+                if (STATE.currentEmotion === 'surprised' && MAR < 0.5) {
+                    if (now - STATE.lastSurpriseTime > CONFIG.SURPRISE_RETURN_DELAY) {
+                        await crossfadeToExpression('idle');
+                    }
+                }
+                STATE.surpriseHoldStart = 0;
+            }
+
+            // ==================== HEAD TILT ====================
+            handleHeadTilt(headTilt);
+
+            // ==================== SHY DETECTION (Close-up) ====================
+            if (STATE.faceAreaHistory.length >= 10) {
+                const avgArea = STATE.faceAreaHistory.slice(0, -3).reduce((a, b) => a + b, 0) / 
+                                (STATE.faceAreaHistory.length - 3);
+                if (faceArea > avgArea * CONFIG.FACE_SIZE_THRESHOLD) {
+                    await handleShy();
+                }
+            }
+        }
+
+        function startDetection() {
+            detectionInterval = setInterval(detectFace, CONFIG.DETECTION_INTERVAL);
+        }
+
+        function stopDetection() {
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+            }
+        }
+
+        /* ========================================
+           CAMERA INITIALIZATION
+        ======================================== */
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 320 },
+                        height: { ideal: 240 }
+                    }
+                });
+                elements.video.srcObject = stream;
+                elements.cameraPreview.classList.add('active');
+                
+                // Wait for video to be ready
+                await new Promise(resolve => {
+                    elements.video.onloadedmetadata = resolve;
+                });
+                
+                return true;
+            } catch (error) {
+                console.error('Camera error:', error);
+                alert('Camera access denied. Please allow camera permissions and refresh.');
+                return false;
+            }
+        }
+
+        /* ========================================
+           FACE-API MODEL LOADING
+        ======================================== */
+        async function loadModels() {
+            elements.loading.style.display = 'block';
+            const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+            
+            try {
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                elements.loading.style.display = 'none';
+                return true;
+            } catch (error) {
+                console.error('Model loading error:', error);
+                elements.loading.textContent = 'Failed to load models. Please refresh.';
+                return false;
+            }
+        }
+
+        /* ========================================
+           INITIALIZATION SEQUENCE
+        ======================================== */
+        async function startExperience() {
+            // Hide tutorial
+            elements.tutorialOverlay.classList.remove('visible');
+            localStorage.setItem('rin-tutorial-seen', 'true');
+            
+            // Load models
+            const modelsLoaded = await loadModels();
+            if (!modelsLoaded) return;
+            
+            // Initialize camera
+            const cameraReady = await initCamera();
+            if (!cameraReady) return;
+            
+            // Greeting animation
+            await crossfadeToExpression('happy');
+            spawnHeartsAround(8);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await crossfadeToExpression('idle');
+            
+            // Start detection and idle behaviors
+            startDetection();
+            scheduleIdleFidget();
+            scheduleAutoBlink();
+        }
+
+        /* ========================================
+           EVENT LISTENERS
+        ======================================== */
+        elements.startBtn.addEventListener('click', startExperience);
+
+        // Tutorial check on load
+        window.addEventListener('DOMContentLoaded', () => {
+            initBokeh();
+            
+            if (!localStorage.getItem('rin-tutorial-seen')) {
+                elements.tutorialOverlay.classList.add('visible');
+            } else {
+                startExperience();
+            }
+        });
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            stopDetection();
+            if (elements.video.srcObject) {
+                elements.video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        // Prevent touch events on character
+        elements.characterWrapper.addEventListener('touchstart', (e) => e.preventDefault());
+        elements.characterWrapper.addEventListener('touchmove', (e) => e.preventDefault());
+
+        // Image error handling
+        elements.currentImage.onerror = () => {
+            console.error('Failed to load image:', elements.currentImage.src);
+            elements.currentImage.style.display = 'none';
+        };
+        elements.nextImage.onerror = () => {
+            console.error('Failed to load image:', elements.nextImage.src);
+            elements.nextImage.style.display = 'none';
+        };
+    </script>
 </body>
  </html>
