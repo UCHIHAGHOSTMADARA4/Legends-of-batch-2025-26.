@@ -3,306 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Yukino – Blink Mirror</title>
+<title>Live2D Blink Mirror ✨</title>
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/index.min.js"></script>
 <script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
     background: radial-gradient(ellipse at 30% 30%, #1a1a2e, #0f0f1a);
-    min-height: 100vh;
     display: flex; justify-content: center; align-items: center;
+    height: 100vh; width: 100vw;
+    overflow: hidden;
     font-family: 'Segoe UI', sans-serif;
-    overflow: hidden;
     user-select: none;
-    -webkit-tap-highlight-color: transparent;
   }
-
-  /* Floating particles (bokeh) */
-  .particles {
-    position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;
+  #canvas-container {
+    width: 100vw; height: 100vh;
+    display: flex; justify-content: center; align-items: center;
   }
-  .particle {
-    position: absolute;
-    background: rgba(255,255,255,0.08);
-    border-radius: 50%;
-    animation: float 10s infinite ease-in-out;
-  }
-  @keyframes float {
-    0%,100% { transform: translateY(0) scale(1); opacity:0.4; }
-    50% { transform: translateY(-60px) scale(2); opacity:0; }
-  }
-
-  /* Character container */
-  .stage {
-    position: relative; z-index: 1;
-    width: 320px; height: 600px;  /* larger canvas for detail */
-    transform-origin: bottom center;
-    animation: breathe 4s ease-in-out infinite, gentleTilt 8s ease-in-out infinite;
-  }
-  @keyframes breathe {
-    0%,100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-  }
-  @keyframes gentleTilt {
-    0%,100% { transform: rotate(0deg); }
-    30% { transform: rotate(0.8deg); }
-    70% { transform: rotate(-0.8deg); }
-  }
-
-  /* -------------------------------------------------- */
-  /*  HAIR – BACK LAYER  (long flowing)                  */
-  /* -------------------------------------------------- */
-  .hair-back {
-    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-    width: 260px; height: 420px;
-    background: linear-gradient(185deg, #2c2c3a 0%, #1e1e2a 70%, #151520 100%);
-    border-radius: 45% 45% 30% 30% / 40% 40% 60% 60%;
-    box-shadow: inset 0 -10px 20px rgba(0,0,0,0.5), 0 15px 30px rgba(0,0,0,0.5);
-    z-index: 0;
-  }
-  .hair-back::after {
-    content: '';
-    position: absolute; bottom: -10px; left: 0; width: 100%; height: 50px;
-    background: linear-gradient(to bottom, #1e1e2a, transparent);
-    border-radius: 50%;
-  }
-  /* hair streaks */
-  .hair-streak {
-    position: absolute; width: 20px; height: 200px;
-    background: linear-gradient(to bottom, #5a5a8a, #2a2a4a);
-    border-radius: 10px;
-    opacity: 0.5;
-    z-index: 1;
-    transform: rotate(8deg);
-    box-shadow: 0 0 15px #7a7aff;
-  }
-  .hair-streak.left { top: 40px; left: 10px; transform: rotate(7deg); }
-  .hair-streak.right { top: 40px; right: 10px; transform: rotate(-7deg); }
-  .hair-streak.center { top: 20px; left: 120px; transform: rotate(0deg); height: 160px; }
-
-  /* -------------------------------------------------- */
-  /*  BODY BASE  (school sailor uniform)                */
-  /* -------------------------------------------------- */
-  .torso {
-    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-    width: 140px; height: 180px;
-    background: linear-gradient(180deg, #2a2a3e 0%, #1a1a2e 100%);
-    border-radius: 20% 20% 10% 10% / 30% 30% 10% 10%;
-    z-index: 3;
-    box-shadow: inset 0 10px 15px rgba(255,255,255,0.05), 0 10px 25px rgba(0,0,0,0.5);
-  }
-  /* white sailor collar */
-  .collar {
-    position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
-    width: 160px; height: 50px;
-    background: #f0f0ff;
-    clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 75% 60%, 50% 80%, 25% 60%, 0% 100%);
-    z-index: 4;
-    box-shadow: inset 0 -5px 10px rgba(0,0,0,0.1), 0 5px 10px rgba(0,0,0,0.3);
-  }
-  /* red ribbon */
-  .ribbon {
-    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-    width: 50px; height: 30px;
-    background: #d94040;
-    clip-path: polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%);
-    z-index: 5;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-  }
-
-  /* -------------------------------------------------- */
-  /*  PLEATED SKIRT                                        */
-  /* -------------------------------------------------- */
-  .skirt {
-    position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%);
-    width: 150px; height: 60px;
-    background: #2a2a3e;
-    clip-path: polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%);
-    z-index: 2;
-    box-shadow: inset 0 5px 5px rgba(255,255,255,0.1), 0 10px 20px rgba(0,0,0,0.4);
-  }
-  /* skirt pleats (stripes) */
-  .pleat {
-    position: absolute; top: 0; width: 30px; height: 100%;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
-    z-index: 3;
-  }
-  .pleat:nth-child(1) { left: 20px; }
-  .pleat:nth-child(2) { left: 60px; }
-  .pleat:nth-child(3) { left: 100px; }
-
-  /* -------------------------------------------------- */
-  /*  LEGS & SOCKS                                        */
-  /* -------------------------------------------------- */
-  .leg {
-    position: absolute; bottom: 0;
-    width: 30px; height: 80px;
-    background: #1a1a2e;
-    border-radius: 10px 10px 0 0;
-    z-index: 1;
-  }
-  .leg.left { left: 35px; }
-  .leg.right { right: 35px; }
-  .sock {
-    position: absolute; bottom: 0;
-    width: 30px; height: 40px;
-    background: #f0f0ff;
-    border-radius: 5px 5px 0 0;
-    box-shadow: inset 0 -3px 5px rgba(0,0,0,0.1);
-  }
-  .sock.left { left: 35px; }
-  .sock.right { right: 35px; }
-  .shoe {
-    position: absolute; bottom: 0;
-    width: 40px; height: 20px;
-    background: #4a3a3a;
-    border-radius: 8px 8px 0 0;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-    z-index: 2;
-  }
-  .shoe.left { left: 30px; }
-  .shoe.right { right: 30px; }
-
-  /* -------------------------------------------------- */
-  /*  ARMS  (subtle, resting at sides)                   */
-  /* -------------------------------------------------- */
-  .arm {
-    position: absolute; top: 140px;
-    width: 22px; height: 100px;
-    background: linear-gradient(90deg, #2a2a3e, #1f1f30);
-    border-radius: 10px;
-    z-index: 2;
-    box-shadow: inset 2px 0 5px rgba(255,255,255,0.05);
-  }
-  .arm.left { left: -5px; transform: rotate(15deg); }
-  .arm.right { right: -5px; transform: rotate(-15deg); }
-  .hand {
-    position: absolute; bottom: -15px;
-    width: 20px; height: 25px;
-    background: #ffd5b8;
-    border-radius: 40%;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-  }
-  .arm.left .hand { left: 0; }
-  .arm.right .hand { right: 0; }
-
-  /* -------------------------------------------------- */
-  /*  HEAD & FACE  (high detail)                          */
-  /* -------------------------------------------------- */
-  .head {
-    position: absolute; top: 45px; left: 50%; transform: translateX(-50%);
-    width: 130px; height: 140px;
-    background: #ffd5b8;
-    border-radius: 45% 45% 35% 35% / 50% 50% 40% 40%;
-    z-index: 10;
-    box-shadow: inset 0 -5px 10px rgba(0,0,0,0.1), 0 10px 25px rgba(0,0,0,0.5);
-  }
-  /* subtle face shading */
-  .head::before {
-    content: '';
-    position: absolute; top:0; left:0; width:100%; height:100%;
-    background: radial-gradient(circle at 50% 70%, rgba(0,0,0,0.2), transparent 70%);
-    border-radius: inherit;
-  }
-  .cheek-blush {
-    position: absolute; top: 80px;
-    width: 24px; height: 16px;
-    background: rgba(255, 120, 120, 0.5);
-    border-radius: 50%;
-    filter: blur(4px);
-    transition: transform 0.4s;
-  }
-  .cheek-blush.left { left: 10px; }
-  .cheek-blush.right { right: 10px; }
-  .cheek-blush.blush { transform: scale(2.2); background: rgba(255, 70, 70, 0.8); }
-
-  /* Nose (tiny) */
-  .nose {
-    position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
-    width: 8px; height: 6px;
-    background: rgba(0,0,0,0.15);
-    border-radius: 50%;
-    filter: blur(1px);
-  }
-
-  /* -------------------------------------------------- */
-  /*  EYES  – highly realistic gradient iris             */
-  /* -------------------------------------------------- */
-  .eyes-container {
-    position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
-    display: flex; gap: 30px;
-  }
-  .eye {
-    width: 40px; height: 38px;
-    background: #fff;
-    border-radius: 50% 50% 45% 45% / 55% 55% 40% 40%;
-    position: relative;
-    overflow: hidden;
-    box-shadow: inset 0 -2px 5px rgba(0,0,0,0.1), 0 0 0 3px #2a2a3e, 0 0 0 4px #000;
-    transition: transform 0.08s ease;
-  }
-  /* iris + pupil using radial gradients */
-  .eye::before {
-    content: '';
-    position: absolute;
-    width: 34px; height: 34px;
-    background: radial-gradient(circle at 35% 35%, #3f70b0 10%, #1d3557 50%, #0b1c2f 90%);
-    border-radius: 50%;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-  }
-  /* corneal light reflex (double) */
-  .eye::after {
-    content: '';
-    position: absolute;
-    width: 7px; height: 7px;
-    background: white;
-    border-radius: 50%;
-    top: 10px; left: 12px;
-    box-shadow: 0 0 10px white, 18px 12px 0 -3px rgba(255,255,255,0.6);
-  }
-  /* upper eyelid shadow */
-  .eyelid-top {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 40%);
-    pointer-events: none;
-  }
-  .eye.closed {
-    transform: scaleY(0.05);
-  }
-
-  /* mouth */
-  .mouth {
-    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-    width: 14px; height: 8px;
-    border-bottom: 2px solid #b05060;
-    border-radius: 0 0 50% 50%;
-    transition: all 0.2s;
-  }
-  .mouth.smile {
-    width: 24px; height: 13px;
-    border-bottom-width: 3px;
-    border-radius: 0 0 90% 90%;
-  }
-
-  /* face-lost ? */
-  .question-mark {
-    display: none;
-    position: absolute; top: -20px; right: 30px;
-    font-size: 46px;
-    color: #ff6666;
-    z-index: 100;
-    animation: pop 0.7s ease-in-out;
-    filter: drop-shadow(0 0 8px red);
-  }
-  @keyframes pop {
-    0% { transform: scale(0); opacity: 0; }
-    60% { transform: scale(1.3); opacity:1; }
-    100% { transform: scale(1); }
-  }
-
-  /* camera preview */
   .camera-preview {
     position: fixed; bottom: 20px; right: 20px;
     width: 80px; height: 100px;
@@ -310,236 +28,195 @@
     border: 2px solid rgba(255,255,255,0.8);
     box-shadow: 0 4px 20px rgba(0,0,0,0.8);
     overflow: hidden;
-    z-index: 100;
+    z-index: 50;
     background: #000;
+    display: none;
   }
   .camera-preview video {
-    width: 100%; height: 100%; object-fit: cover;
+    width: 100%; height: 100%;
+    object-fit: cover;
     transform: scaleX(-1);
   }
-
-  /* UI bar */
   .ui-bar {
     position: fixed; top: 10px; left: 10px; right: 10px;
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: space-between;
+    align-items: center;
     z-index: 50;
     color: white; text-shadow: 0 2px 5px black;
     font-size: 22px; font-weight: bold;
   }
-  .settings-icon { font-size: 28px; cursor: pointer; }
-
-  /* tutorial overlay */
   .tutorial {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85); z-index: 200;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
     display: flex; justify-content: center; align-items: center;
     flex-direction: column; gap: 25px;
     color: white; text-align: center;
     padding: 30px;
   }
   .tutorial h2 { font-size: 28px; }
-  .tutorial p { font-size: 16px; opacity: 0.9; }
   .tutorial button {
-    background: #ff4d6d; border: none; padding: 14px 36px;
-    border-radius: 40px; font-size: 20px; color: white;
-    cursor: pointer;
+    background: #ff4d6d; border: none;
+    padding: 14px 36px; border-radius: 40px;
+    font-size: 20px; color: white; cursor: pointer;
     box-shadow: 0 0 20px #ff4d6d;
   }
 </style>
 </head>
 <body>
-<div class="particles" id="particles"></div>
-
 <div class="ui-bar">
-  <span>Yukino ❄️</span>
-  <span class="settings-icon">⚙️</span>
+  <span>Live2D Blink ✨</span>
+  <span>⚙️</span>
 </div>
 
 <div class="tutorial" id="tutorial">
-  <h2>Let Yukino mirror your blinks</h2>
-  <p>Allow camera access – she blinks when you blink.</p>
-  <button id="startBtn">✨ Start Experience</button>
+  <h2>Blink – and she blinks with you!</h2>
+  <p>Allow camera access to start the mirroring.</p>
+  <button id="startBtn">✨ Start</button>
   <p style="font-size:13px; opacity:0.7;">(Your video never leaves your device.)</p>
 </div>
 
-<div class="stage" id="character">
-  <!-- Hair back -->
-  <div class="hair-back">
-    <div class="hair-streak left"></div>
-    <div class="hair-streak right"></div>
-    <div class="hair-streak center"></div>
-  </div>
+<div id="canvas-container"></div>
 
-  <!-- Body -->
-  <div class="torso"></div>
-  <div class="collar"></div>
-  <div class="ribbon"></div>
-
-  <div class="skirt">
-    <div class="pleat"></div>
-    <div class="pleat"></div>
-    <div class="pleat"></div>
-  </div>
-
-  <!-- Legs, socks, shoes -->
-  <div class="leg left"><div class="sock left"></div><div class="shoe left"></div></div>
-  <div class="leg right"><div class="sock right"></div><div class="shoe right"></div></div>
-
-  <!-- Arms & hands -->
-  <div class="arm left"><div class="hand"></div></div>
-  <div class="arm right"><div class="hand"></div></div>
-
-  <!-- Head -->
-  <div class="head">
-    <div class="eyes-container">
-      <div class="eye" id="leftEye"><div class="eyelid-top"></div></div>
-      <div class="eye" id="rightEye"><div class="eyelid-top"></div></div>
-    </div>
-    <div class="nose"></div>
-    <div class="cheek-blush left" id="leftCheek"></div>
-    <div class="cheek-blush right" id="rightCheek"></div>
-    <div class="mouth" id="mouth"></div>
-  </div>
-
-  <div class="question-mark" id="questionMark">❓</div>
-</div>
-
-<div class="camera-preview" id="cameraPreview" style="display:none;">
+<div class="camera-preview" id="cameraPreview">
   <video id="video" playsinline autoplay muted></video>
 </div>
 
 <script>
-  // ---------- elements ----------
-  const video = document.getElementById('video');
-  const leftEyeEl = document.getElementById('leftEye');
-  const rightEyeEl = document.getElementById('rightEye');
-  const mouthEl = document.getElementById('mouth');
-  const leftCheek = document.getElementById('leftCheek');
-  const rightCheek = document.getElementById('rightCheek');
-  const questionMark = document.getElementById('questionMark');
-  const startBtn = document.getElementById('startBtn');
-  const tutorial = document.getElementById('tutorial');
-  const cameraPreview = document.getElementById('cameraPreview');
+// ---------- DOM ----------
+const video = document.getElementById('video');
+const startBtn = document.getElementById('startBtn');
+const tutorial = document.getElementById('tutorial');
+const cameraPreview = document.getElementById('cameraPreview');
+const container = document.getElementById('canvas-container');
 
-  const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
-  const AUTONOMOUS_BLINK_ENABLED = false;  // blink only when you do
+// ---------- face-api model path ----------
+const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
 
-  let faceInterval, autoBlinkTimer, faceLostTimer, lastBlink = 0, userBlinking = false, faceLost = false;
-  const EAR_THRESHOLD = 0.25, MAR_THRESHOLD = 0.6;
+// ---------- Live2D model URL (Haru, free sample) ----------
+const LIVE2D_MODEL_URL = 'https://cdn.jsdelivr.net/gh/Live2D/CubismWebSamples@main/Samples/Resources/Haru/Haru.model3.json';
 
-  // particles
-  (function() {
-    const container = document.getElementById('particles');
-    for (let i=0;i<20;i++) {
-      const p = document.createElement('div');
-      p.className = 'particle';
-      const size = Math.random()*60+20;
-      p.style.width = size+'px'; p.style.height = size+'px';
-      p.style.left = Math.random()*100+'%';
-      p.style.top = Math.random()*100+'%';
-      p.style.animationDelay = Math.random()*10+'s';
-      container.appendChild(p);
+// ---------- Blink detection variables ----------
+let faceDetectionInterval;
+let lastBlinkTime = 0;
+let userBlinking = false;
+let currentEyeValue = 1.0;  // target eye open (1 = fully open)
+
+// ---------- Pixi application & model ----------
+let app;
+let live2dModel;
+
+// ---------- Set up PixiJS and load the model ----------
+async function initLive2D() {
+  app = new PIXI.Application({
+    resizeTo: container,
+    backgroundAlpha: 0,
+    antialias: true,
+    resolution: window.devicePixelRatio || 1,
+    autoDensity: true,
+  });
+  container.appendChild(app.view);
+
+  // Load model
+  live2dModel = await PIXI.live2d.Live2DModel.from(LIVE2D_MODEL_URL, { autoInteract: false });
+  live2dModel.anchor.set(0.5, 0.5);
+  live2dModel.scale.set(0.2);  // scale down to fit
+  live2dModel.position.set(app.screen.width / 2, app.screen.height / 2);
+
+  app.stage.addChild(live2dModel);
+
+  // Important: we need to update the eye parameters every frame
+  // based on the currentEyeValue (which is driven by blink detection).
+  app.ticker.add(() => {
+    if (live2dModel) {
+      // Slowly interpolate toward currentEyeValue for smooth transitions
+      const currentL = live2dModel.internalModel.coreModel.getParameterValueById('ParamEyeLOpen');
+      const currentR = live2dModel.internalModel.coreModel.getParameterValueById('ParamEyeROpen');
+      const speed = 0.3;  // how quickly eyes follow the target value
+      const newL = currentL + (currentEyeValue - currentL) * speed;
+      const newR = currentR + (currentEyeValue - currentR) * speed;
+      live2dModel.internalModel.coreModel.setParameterValueById('ParamEyeLOpen', newL);
+      live2dModel.internalModel.coreModel.setParameterValueById('ParamEyeROpen', newR);
     }
-  })();
+  });
+}
 
-  function blinkEyes(dur=150) {
-    leftEyeEl.classList.add('closed');
-    rightEyeEl.classList.add('closed');
-    setTimeout(() => {
-      leftEyeEl.classList.remove('closed');
-      rightEyeEl.classList.remove('closed');
-    }, dur);
-  }
+// ---------- Blink mirror logic (face-api) ----------
+async function onFaceDetected() {
+  if (video.paused || video.ended) return;
+  const detection = await faceapi.detectSingleFace(
+    video,
+    new faceapi.TinyFaceDetectorOptions({ inputSize: 160 })
+  ).withFaceLandmarks();
 
-  function autoBlinkLoop() {
-    clearTimeout(autoBlinkTimer);
-    if (!AUTONOMOUS_BLINK_ENABLED) return;
-    autoBlinkTimer = setTimeout(() => {
-      if (!userBlinking) blinkEyes(150);
-      autoBlinkLoop();
-    }, 3000 + Math.random()*1500);
-  }
+  if (detection && detection.landmarks) {
+    const leftEye = detection.landmarks.getLeftEye();
+    const rightEye = detection.landmarks.getRightEye();
+    const EAR = (eyeAspectRatio(leftEye) + eyeAspectRatio(rightEye)) / 2;
 
-  function setSmile(s) {
-    if (s) {
-      leftCheek.classList.add('blush');
-      rightCheek.classList.add('blush');
-      mouthEl.classList.add('smile');
-    } else {
-      leftCheek.classList.remove('blush');
-      rightCheek.classList.remove('blush');
-      mouthEl.classList.remove('smile');
-    }
-  }
-
-  function setFaceLost(lost) {
-    if (lost && !faceLost) { questionMark.style.display='block'; faceLost = true; }
-    else if (!lost && faceLost) { questionMark.style.display='none'; faceLost = false; }
-  }
-
-  function ear(eye) {
-    const A = Math.hypot(eye[1].x-eye[5].x, eye[1].y-eye[5].y);
-    const B = Math.hypot(eye[2].x-eye[4].x, eye[2].y-eye[4].y);
-    const C = Math.hypot(eye[0].x-eye[3].x, eye[0].y-eye[3].y);
-    return (A+B)/(2*C);
-  }
-  function mar(mouth) {
-    return Math.hypot(mouth[3].x-mouth[9].x, mouth[3].y-mouth[9].y) /
-           Math.hypot(mouth[0].x-mouth[6].x, mouth[0].y-mouth[6].y);
-  }
-
-  async function detect() {
-    if (video.paused || video.ended) return;
-    const det = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:160})).withFaceLandmarks();
-    if (det && det.landmarks) {
-      if (faceLost) { setFaceLost(false); clearTimeout(faceLostTimer); }
-      const L = det.landmarks;
-      const earVal = (ear(L.getLeftEye()) + ear(L.getRightEye()))/2;
-      const now = Date.now();
-      if (earVal < EAR_THRESHOLD && !userBlinking && (now - lastBlink) > 300) {
-        userBlinking = true;
-        lastBlink = now;
-        blinkEyes(150);
-        setTimeout(() => userBlinking=false, 300);
-      }
-      setSmile(mar(L.getMouth()) > MAR_THRESHOLD);
-      clearTimeout(faceLostTimer);
-      faceLostTimer = setTimeout(() => setFaceLost(true), 2000);
-    } else {
-      clearTimeout(faceLostTimer);
-      faceLostTimer = setTimeout(() => setFaceLost(true), 2000);
+    const now = Date.now();
+    if (EAR < 0.25 && !userBlinking && (now - lastBlinkTime) > 300) {
+      // User blinked
+      userBlinking = true;
+      lastBlinkTime = now;
+      currentEyeValue = 0.0;         // close model's eyes
+      setTimeout(() => {
+        currentEyeValue = 1.0;       // open back
+        userBlinking = false;
+      }, 150);
     }
   }
+}
 
-  async function start() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'user', width:{ideal:320}, height:{ideal:240} } });
-      video.srcObject = stream;
-      video.play();
-      cameraPreview.style.display = 'block';
-      await faceapi.nets.tinyFaceDetector.load(MODEL_URL);
-      await faceapi.nets.faceLandmark68Net.load(MODEL_URL);
-      faceInterval = setInterval(detect, 120);
-      autoBlinkLoop();
-      tutorial.style.display = 'none';
-      localStorage.setItem('yukinoTutorial','1');
-    } catch(e) {
-      alert('Camera access denied. Please allow it to let Yukino see you!');
-      console.error(e);
-    }
+function eyeAspectRatio(eye) {
+  const A = Math.hypot(eye[1].x - eye[5].x, eye[1].y - eye[5].y);
+  const B = Math.hypot(eye[2].x - eye[4].x, eye[2].y - eye[4].y);
+  const C = Math.hypot(eye[0].x - eye[3].x, eye[0].y - eye[3].y);
+  return (A + B) / (2.0 * C);
+}
+
+// ---------- Start camera and detection ----------
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 240 } }
+    });
+    video.srcObject = stream;
+    await video.play();
+    cameraPreview.style.display = 'block';
+
+    await faceapi.nets.tinyFaceDetector.load(MODEL_URL);
+    await faceapi.nets.faceLandmark68Net.load(MODEL_URL);
+
+    faceDetectionInterval = setInterval(onFaceDetected, 120);
+    tutorial.style.display = 'none';
+    localStorage.setItem('live2dTutorial', '1');
+  } catch (err) {
+    alert('Camera access denied. Please allow camera permission.');
+    console.error(err);
   }
+}
 
-  window.onload = () => {
-    if (localStorage.getItem('yukinoTutorial') === '1') { tutorial.style.display='none'; start(); }
-    else tutorial.style.display='flex';
-  };
-  startBtn.addEventListener('click', start);
-  window.onbeforeunload = () => {
-    clearInterval(faceInterval);
-    clearTimeout(faceLostTimer);
-    clearTimeout(autoBlinkTimer);
-    if (video.srcObject) video.srcObject.getTracks().forEach(t=>t.stop());
-  };
+// ---------- Initialization ----------
+window.addEventListener('load', async () => {
+  await initLive2D();
+  if (localStorage.getItem('live2dTutorial') === '1') {
+    tutorial.style.display = 'none';
+    startCamera();
+  } else {
+    tutorial.style.display = 'flex';
+  }
+});
+
+startBtn.addEventListener('click', startCamera);
+
+window.addEventListener('beforeunload', () => {
+  clearInterval(faceDetectionInterval);
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+  }
+  if (app) app.destroy(true);
+});
 </script>
 </body>
  </html>
